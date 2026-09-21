@@ -19,8 +19,10 @@ until the foundational repository and CI contracts are complete.
 | 00 — Foundation and production CI | In progress | Repository contracts and repeatable quality pipeline |
 | 01 — Local runtime and infrastructure spine | Blocked by Phase 00 | Healthy local stack and transaction-to-event proof |
 
-The current task is **P00-01 — Record foundational decisions**. Accepted
-decisions are recorded in [`docs/adr`](docs/adr/README.md).
+P00-01 through P00-03 are complete: foundational decisions and repository
+commands are recorded, and both applications have buildable, smoke-tested
+scaffolds. The next task is **P00-04 — Define shared contract conventions**.
+Accepted decisions are recorded in [`docs/adr`](docs/adr/README.md).
 
 ## Intended repository layout
 
@@ -49,6 +51,7 @@ toolchains. The stable command surface is:
 | `make integration` | Run tests against real infrastructure boundaries |
 | `make e2e` | Run critical browser journeys |
 | `make build` | Build production application artifacts |
+| `make smoke` | Start and probe both built applications |
 | `make generate` / `make generate-check` | Refresh or verify derived source |
 | `make migrate-up` / `make migrate-down` | Apply or revert local migrations |
 | `make dev` / `make down` | Start or stop the complete local stack |

@@ -18,7 +18,7 @@ require_command() {
 
 require_command go "Install the version declared in .tool-versions."
 require_command node "Install the version declared in .nvmrc or .tool-versions."
-require_command corepack "Install the pinned Node.js toolchain, which includes Corepack."
+require_command pnpm "Install the version declared in .tool-versions or activate the root packageManager version."
 require_command docker "Install Docker Engine with the Compose plugin."
 
 if command -v go >/dev/null 2>&1; then
@@ -37,13 +37,13 @@ if command -v node >/dev/null 2>&1; then
   fi
 fi
 
-if command -v corepack >/dev/null 2>&1; then
-  actual_pnpm="$(corepack pnpm --version 2>/dev/null || true)"
-  if [[ "${actual_pnpm}" != "${expected_pnpm}" ]]; then
-    echo "pnpm version mismatch: expected ${expected_pnpm}, found ${actual_pnpm:-unavailable}." >&2
-    echo "Run 'corepack enable' and retry; Corepack reads the root packageManager pin." >&2
-    failed=1
-  fi
+if command -v pnpm >/dev/null 2>&1; then
+	actual_pnpm="$(pnpm --version 2>/dev/null || true)"
+	if [[ "${actual_pnpm}" != "${expected_pnpm}" ]]; then
+		echo "pnpm version mismatch: expected ${expected_pnpm}, found ${actual_pnpm:-unavailable}." >&2
+		echo "Use .tool-versions or the root packageManager pin to activate it." >&2
+		failed=1
+	fi
 fi
 
 if command -v docker >/dev/null 2>&1 && ! docker compose version >/dev/null 2>&1; then

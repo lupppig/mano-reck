@@ -1,2 +1,7 @@
 packages:
   - frontend
+
+# Native resolver used by the pinned Next.js ESLint configuration. Dependency
+# lifecycle scripts are denied unless they are explicitly reviewed here.
+allowBuilds:
+  unrs-resolver: true
