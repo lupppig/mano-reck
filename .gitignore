@@ -24,8 +24,25 @@ profile.cov
 go.work
 go.work.sum
 
-# env file
+# Environment and secrets
 .env
+.env.*
+!.env.example
+
+# JavaScript dependencies and build output
+node_modules/
+.next/
+out/
+dist/
+playwright-report/
+test-results/
+
+# Go build and local test output
+bin/
+.cache/
+
+# Local infrastructure state
+.local/
 
 # Editor/IDE
 # .idea/
