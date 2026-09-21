@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:manoreck:schema:events:internal:envelope:v1",
+  "title": "Mano Reck integration event envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "type",
+    "version",
+    "occurred_at",
+    "tenant_id",
+    "aggregate",
+    "correlation_id",
+    "causation_id",
+    "data"
+  ],
+  "properties": {
+    "id": { "$ref": "#/$defs/uuidV7" },
+    "type": { "$ref": "#/$defs/eventType" },
+    "version": { "type": "integer", "minimum": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "tenant_id": {
+      "description": "Null only for an explicitly platform-scoped event.",
+      "oneOf": [{ "$ref": "#/$defs/uuidV7" }, { "type": "null" }]
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "id": { "$ref": "#/$defs/uuidV7" }
+      }
+    },
+    "correlation_id": { "$ref": "#/$defs/uuidV7" },
+    "causation_id": { "$ref": "#/$defs/uuidV7" },
+    "data": { "type": "object" }
+  },
+  "$defs": {
+    "uuidV7": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "eventType": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+    }
+  }
+}

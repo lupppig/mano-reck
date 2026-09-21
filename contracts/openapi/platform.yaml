@@ -1,0 +1,210 @@
+openapi: 3.1.1
+info:
+  title: Mano Reck Platform API
+  version: 0.1.0
+  description: >-
+    Shared transport conventions for the multi-tenant credit platform. Product
+    resources are introduced by their owning delivery phases.
+servers:
+  - url: http://localhost:8080
+    description: Local backend
+tags:
+  - name: Operations
+    description: Unversioned runtime probes.
+paths:
+  /healthz:
+    get:
+      operationId: getProcessHealth
+      summary: Report whether the backend process is alive
+      tags: [Operations]
+      security: []
+      responses:
+        "200":
+          description: The process is alive.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "#/components/headers/CorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+components:
+  headers:
+    RequestId:
+      description: UUIDv7 identifying this HTTP request and response attempt.
+      required: true
+      schema:
+        $ref: "#/components/schemas/UUIDv7"
+    CorrelationId:
+      description: UUIDv7 correlating work caused by the same user or system intent.
+      required: true
+      schema:
+        $ref: "#/components/schemas/UUIDv7"
+  parameters:
+    TenantId:
+      name: X-Tenant-ID
+      in: header
+      required: true
+      description: Explicit active tenant context; it does not grant authorization.
+      schema:
+        $ref: "#/components/schemas/UUIDv7"
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      description: Optional UUIDv7 request identifier. Invalid values are replaced.
+      schema:
+        $ref: "#/components/schemas/UUIDv7"
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: false
+      description: Optional UUIDv7 propagated across downstream work.
+      schema:
+        $ref: "#/components/schemas/UUIDv7"
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Opaque key preventing duplicate execution of the declared operation.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 255
+        pattern: "^[!-~]+$"
+    PageLimit:
+      name: page[limit]
+      in: query
+      required: false
+      description: Maximum number of resources to return.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    PageAfter:
+      name: page[after]
+      in: query
+      required: false
+      description: Opaque cursor returned by the preceding page.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 2048
+  schemas:
+    UUIDv7:
+      type: string
+      format: uuid
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      examples: ["01991a2b-3c4d-7e5f-8a9b-0c1d2e3f4a5b"]
+    Health:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          const: ok
+    Money:
+      type: object
+      additionalProperties: false
+      required: [amount_minor, currency]
+      properties:
+        amount_minor:
+          type: integer
+          format: int64
+          description: Exact amount in the currency's minor unit.
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          description: ISO 4217 alphabetic currency code.
+      examples:
+        - amount_minor: 105000
+          currency: NGN
+    Page:
+      type: object
+      additionalProperties: false
+      required: [has_more]
+      properties:
+        next_cursor:
+          type: [string, "null"]
+          description: Opaque cursor for the next page, or null at the end.
+        has_more:
+          type: boolean
+    ProblemField:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        field:
+          type: string
+          description: JSON Pointer or stable field name when applicable.
+        code:
+          type: string
+          pattern: "^[a-z][a-z0-9_]*$"
+        message:
+          type: string
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, request_id, correlation_id]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          description: Stable problem type URI.
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        code:
+          type: string
+          pattern: "^[a-z][a-z0-9_]*$"
+          description: Stable machine-readable error code.
+        request_id:
+          $ref: "#/components/schemas/UUIDv7"
+        correlation_id:
+          $ref: "#/components/schemas/UUIDv7"
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProblemField"
+  responses:
+    BadRequest:
+      description: The request is malformed or fails validation.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        X-Correlation-ID:
+          $ref: "#/components/headers/CorrelationId"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Unauthorized:
+      description: Authentication is missing or invalid.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Forbidden:
+      description: The authenticated principal lacks permission or resource scope.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Conflict:
+      description: The request conflicts with current state or idempotency history.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"

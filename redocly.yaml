@@ -1,0 +1,16 @@
+extends:
+  - recommended
+
+rules:
+  # Phase 00 deliberately publishes shared components before product endpoints
+  # consume them. Later endpoint contracts should reduce this unused set.
+  no-unused-components: off
+
+  # The only initial server is the reproducible local runtime.
+  no-server-example.com: off
+
+  # Operational probes have no meaningful client-error response.
+  operation-4xx-response: off
+
+  # This private repository has not selected a distribution license.
+  info-license: off

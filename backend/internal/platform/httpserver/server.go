@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/lupppig/mano-reck/backend/internal/platform/identifier"
 )
 
 const (
@@ -22,12 +24,35 @@ func New(address string, logger *slog.Logger) *http.Server {
 
 	return &http.Server{
 		Addr:              address,
-		Handler:           logRequests(logger, mux),
+		Handler:           requestIdentifiers(logRequests(logger, mux)),
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
 	}
+}
+
+func requestIdentifiers(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requestID := request.Header.Get("X-Request-ID")
+		if !identifier.IsUUIDv7(requestID) {
+			var err error
+			requestID, err = identifier.NewUUIDv7()
+			if err != nil {
+				http.Error(response, "could not create request identifier", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		correlationID := request.Header.Get("X-Correlation-ID")
+		if !identifier.IsUUIDv7(correlationID) {
+			correlationID = requestID
+		}
+
+		response.Header().Set("X-Request-ID", requestID)
+		response.Header().Set("X-Correlation-ID", correlationID)
+		next.ServeHTTP(response, request)
+	})
 }
 
 func health(response http.ResponseWriter, _ *http.Request) {

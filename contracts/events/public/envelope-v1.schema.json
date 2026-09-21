@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:manoreck:schema:events:public:envelope:v1",
+  "title": "Mano Reck public webhook envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "event_id",
+    "type",
+    "version",
+    "created_at",
+    "tenant_id",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "description": "Unique delivery identifier used for receiver idempotency.",
+      "$ref": "#/$defs/uuidV7"
+    },
+    "event_id": {
+      "description": "Stable public event identifier across delivery attempts.",
+      "$ref": "#/$defs/uuidV7"
+    },
+    "type": { "$ref": "#/$defs/eventType" },
+    "version": { "type": "integer", "minimum": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "tenant_id": { "$ref": "#/$defs/uuidV7" },
+    "data": { "type": "object" }
+  },
+  "$defs": {
+    "uuidV7": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "eventType": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+    }
+  }
+}

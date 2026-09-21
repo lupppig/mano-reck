@@ -14,15 +14,16 @@ contracts, migrations, local infrastructure, tests, and CI configuration.
 The dependency-ordered roadmap starts with Phase 00. Phase 01 cannot begin
 until the foundational repository and CI contracts are complete.
 
-| Phase | Status | Outcome |
-|---|---|---|
-| 00 — Foundation and production CI | In progress | Repository contracts and repeatable quality pipeline |
-| 01 — Local runtime and infrastructure spine | Blocked by Phase 00 | Healthy local stack and transaction-to-event proof |
+| Phase                                       | Status              | Outcome                                              |
+| ------------------------------------------- | ------------------- | ---------------------------------------------------- |
+| 00 — Foundation and production CI           | In progress         | Repository contracts and repeatable quality pipeline |
+| 01 — Local runtime and infrastructure spine | Blocked by Phase 00 | Healthy local stack and transaction-to-event proof   |
 
-P00-01 through P00-03 are complete: foundational decisions and repository
-commands are recorded, and both applications have buildable, smoke-tested
-scaffolds. The next task is **P00-04 — Define shared contract conventions**.
-Accepted decisions are recorded in [`docs/adr`](docs/adr/README.md).
+P00-01 through P00-04 are complete: foundational decisions and repository
+commands are recorded, both applications have buildable smoke-tested
+scaffolds, and shared transport contracts are machine-readable. The next task
+is **P00-05 — Build production CI baseline**. Accepted decisions are recorded
+in [`docs/adr`](docs/adr/README.md).
 
 ## Intended repository layout
 
@@ -42,21 +43,22 @@ Only directories with implemented content are added to version control.
 Run `make help` for the command list and `make doctor` to validate local
 toolchains. The stable command surface is:
 
-| Command | Purpose |
-|---|---|
-| `make bootstrap` | Install locked dependencies |
-| `make format` / `make format-check` | Apply or verify formatting |
-| `make lint` | Run static analysis |
-| `make unit` | Run deterministic unit tests |
-| `make integration` | Run tests against real infrastructure boundaries |
-| `make e2e` | Run critical browser journeys |
-| `make build` | Build production application artifacts |
-| `make smoke` | Start and probe both built applications |
-| `make generate` / `make generate-check` | Refresh or verify derived source |
-| `make migrate-up` / `make migrate-down` | Apply or revert local migrations |
-| `make dev` / `make down` | Start or stop the complete local stack |
-| `make check` | Run the fast local quality gate |
-| `make ci` | Run the non-browser CI gate |
+| Command                                 | Purpose                                          |
+| --------------------------------------- | ------------------------------------------------ |
+| `make bootstrap`                        | Install locked dependencies                      |
+| `make format` / `make format-check`     | Apply or verify formatting                       |
+| `make lint`                             | Run static analysis                              |
+| `make contracts`                        | Validate OpenAPI and event/audit schemas         |
+| `make unit`                             | Run deterministic unit tests                     |
+| `make integration`                      | Run tests against real infrastructure boundaries |
+| `make e2e`                              | Run critical browser journeys                    |
+| `make build`                            | Build production application artifacts           |
+| `make smoke`                            | Start and probe both built applications          |
+| `make generate` / `make generate-check` | Refresh or verify derived source                 |
+| `make migrate-up` / `make migrate-down` | Apply or revert local migrations                 |
+| `make dev` / `make down`                | Start or stop the complete local stack           |
+| `make check`                            | Run the fast local quality gate                  |
+| `make ci`                               | Run the non-browser CI gate                      |
 
 Configuration and generated-source rules are documented in
 [`docs/configuration.md`](docs/configuration.md) and

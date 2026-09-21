@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor bootstrap format format-check lint unit integration e2e test build smoke smoke-backend smoke-frontend generate generate-check migrate-up migrate-down migrate-version dev down check ci
+.PHONY: help doctor bootstrap format format-check lint contracts unit integration e2e test build smoke smoke-backend smoke-frontend generate generate-check migrate-up migrate-down migrate-version dev down check ci
 
 help: ## Show the stable repository command surface.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -24,6 +24,9 @@ format-check: ## Check formatting without modifying files.
 lint: ## Run backend and frontend static analysis.
 	@cd backend && go vet ./...
 	@pnpm --dir frontend lint
+
+contracts: ## Validate OpenAPI and JSON Schema contracts.
+	@pnpm contracts:lint
 
 unit: ## Run deterministic unit tests.
 	@cd backend && go test ./...
@@ -72,6 +75,6 @@ dev: ## Build and start the complete local stack.
 down: ## Stop the local stack without deleting persisted volumes.
 	@docker compose --env-file .env -f deploy/compose.yaml down
 
-check: format-check lint unit build ## Run fast local quality checks.
+check: format-check lint contracts unit build ## Run fast local quality checks.
 
 ci: check integration generate-check ## Run the non-browser continuous-integration gate.

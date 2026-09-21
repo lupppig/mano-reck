@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:manoreck:schema:audit:metadata:v1",
+  "title": "Mano Reck audit metadata v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["actor", "tenant_id", "request_id", "correlation_id", "source"],
+  "properties": {
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["USER", "API_KEY", "SYSTEM", "WORKER"]
+        },
+        "id": {
+          "oneOf": [{ "$ref": "#/$defs/uuidV7" }, { "type": "null" }]
+        }
+      }
+    },
+    "tenant_id": {
+      "oneOf": [{ "$ref": "#/$defs/uuidV7" }, { "type": "null" }]
+    },
+    "request_id": {
+      "oneOf": [{ "$ref": "#/$defs/uuidV7" }, { "type": "null" }]
+    },
+    "correlation_id": { "$ref": "#/$defs/uuidV7" },
+    "source": {
+      "type": "string",
+      "enum": ["HTTP", "WORKER", "SCHEDULER", "PROVIDER_WEBHOOK", "SYSTEM"]
+    },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 2000 }
+  },
+  "$defs": {
+    "uuidV7": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    }
+  }
+}
