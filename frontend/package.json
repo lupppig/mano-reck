@@ -9,6 +9,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "../scripts/no-e2e-yet.sh",
     "generate": "../scripts/no-generation-yet.sh"

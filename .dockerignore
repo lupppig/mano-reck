@@ -1,0 +1,12 @@
+.git
+.github
+.local
+bin
+node_modules
+frontend/.next
+frontend/node_modules
+coverage.*
+playwright-report
+test-results
+.env
+.env.*

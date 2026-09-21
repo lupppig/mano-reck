@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor bootstrap format format-check lint contracts unit integration e2e test build smoke smoke-backend smoke-frontend generate generate-check migrate-up migrate-down migrate-version dev down check ci
+.PHONY: help doctor bootstrap format format-check lint contracts migrations-check unit integration e2e test build smoke smoke-backend smoke-frontend generate generate-check migrate-up migrate-down migrate-version dev down check ci
 
 help: ## Show the stable repository command surface.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -16,17 +16,23 @@ bootstrap: doctor ## Install locked Go and JavaScript dependencies.
 format: ## Format all authored backend and frontend files.
 	@cd backend && gofmt -w $$(find . -type f -name '*.go' -not -path './vendor/*')
 	@pnpm --dir frontend format
+	@pnpm --dir frontend exec prettier --write ../README.md ../docs ../contracts ../redocly.yaml ../package.json ../pnpm-workspace.yaml '../.github/**/*.yml' '../scripts/*.mjs'
 
 format-check: ## Check formatting without modifying files.
 	@./scripts/check-go-format.sh
 	@pnpm --dir frontend format:check
+	@pnpm --dir frontend exec prettier --check ../README.md ../docs ../contracts ../redocly.yaml ../package.json ../pnpm-workspace.yaml '../.github/**/*.yml' '../scripts/*.mjs'
 
 lint: ## Run backend and frontend static analysis.
 	@cd backend && go vet ./...
 	@pnpm --dir frontend lint
+	@pnpm --dir frontend typecheck
 
 contracts: ## Validate OpenAPI and JSON Schema contracts.
 	@pnpm contracts:lint
+
+migrations-check: ## Validate migration naming and up/down pairing.
+	@./scripts/validate-migrations.sh
 
 unit: ## Run deterministic unit tests.
 	@cd backend && go test ./...
@@ -75,6 +81,6 @@ dev: ## Build and start the complete local stack.
 down: ## Stop the local stack without deleting persisted volumes.
 	@docker compose --env-file .env -f deploy/compose.yaml down
 
-check: format-check lint contracts unit build ## Run fast local quality checks.
+check: format-check lint contracts migrations-check unit build ## Run fast local quality checks.
 
 ci: check integration generate-check ## Run the non-browser continuous-integration gate.
