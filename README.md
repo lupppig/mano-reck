@@ -11,19 +11,22 @@ contracts, migrations, local infrastructure, tests, and CI configuration.
 
 ## Delivery status
 
-The dependency-ordered roadmap starts with Phase 00. Phase 01 cannot begin
-until the foundational repository and CI contracts are complete.
+The dependency-ordered roadmap starts with Phase 00. Foundation acceptance is
+complete, so Phase 01 can now establish the local runtime and infrastructure
+spine.
 
-| Phase                                       | Status              | Outcome                                              |
-| ------------------------------------------- | ------------------- | ---------------------------------------------------- |
-| 00 — Foundation and production CI           | In progress         | Repository contracts and repeatable quality pipeline |
-| 01 — Local runtime and infrastructure spine | Blocked by Phase 00 | Healthy local stack and transaction-to-event proof   |
+| Phase                                       | Status   | Outcome                                              |
+| ------------------------------------------- | -------- | ---------------------------------------------------- |
+| 00 — Foundation and production CI           | Complete | Repository contracts and repeatable quality pipeline |
+| 01 — Local runtime and infrastructure spine | Ready    | Healthy local stack and transaction-to-event proof   |
 
-P00-01 through P00-04 are complete: foundational decisions and repository
-commands are recorded, both applications have buildable smoke-tested
-scaffolds, and shared transport contracts are machine-readable. The next task
-is **P00-05 — Build production CI baseline**. Accepted decisions are recorded
-in [`docs/adr`](docs/adr/README.md).
+P00-01 through P00-06 are complete. Foundational decisions and repository
+commands are recorded, both applications and production images build and pass
+process-level smoke checks, shared transport contracts are machine-readable,
+and CI enforces the same quality gates. See the
+[Phase 00 handoff](docs/handoffs/phase-00.md) for acceptance evidence. The next
+task is **P01-01 — Compose infrastructure**. Accepted decisions are recorded in
+[`docs/adr`](docs/adr/README.md).
 
 ## Intended repository layout
 
@@ -49,6 +52,7 @@ toolchains. The stable command surface is:
 | `make format` / `make format-check`     | Apply or verify formatting                       |
 | `make lint`                             | Run static analysis                              |
 | `make contracts`                        | Validate OpenAPI and event/audit schemas         |
+| `make migrations-check`                 | Validate migration naming and up/down pairing    |
 | `make unit`                             | Run deterministic unit tests                     |
 | `make integration`                      | Run tests against real infrastructure boundaries |
 | `make e2e`                              | Run critical browser journeys                    |

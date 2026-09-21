@@ -17,9 +17,9 @@ superseded; accepted records are not silently rewritten.
 
 ## Index
 
-| ADR | Decision | Status |
-|---|---|---|
-| [0001](0001-repository-layout-and-toolchains.md) | Repository layout and application toolchains | Accepted |
-| [0002](0002-api-persistence-and-schema-tooling.md) | API, persistence, migration, and schema tooling | Accepted |
-| [0003](0003-identifiers-money-and-time.md) | Identifiers, money, and time representation | Accepted |
-| [0004](0004-github-actions-for-continuous-integration.md) | GitHub Actions for continuous integration | Accepted |
+| ADR                                                       | Decision                                        | Status   |
+| --------------------------------------------------------- | ----------------------------------------------- | -------- |
+| [0001](0001-repository-layout-and-toolchains.md)          | Repository layout and application toolchains    | Accepted |
+| [0002](0002-api-persistence-and-schema-tooling.md)        | API, persistence, migration, and schema tooling | Accepted |
+| [0003](0003-identifiers-money-and-time.md)                | Identifiers, money, and time representation     | Accepted |
+| [0004](0004-github-actions-for-continuous-integration.md) | GitHub Actions for continuous integration       | Accepted |
