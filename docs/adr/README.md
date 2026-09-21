@@ -23,3 +23,4 @@ superseded; accepted records are not silently rewritten.
 | [0002](0002-api-persistence-and-schema-tooling.md)        | API, persistence, migration, and schema tooling | Accepted |
 | [0003](0003-identifiers-money-and-time.md)                | Identifiers, money, and time representation     | Accepted |
 | [0004](0004-github-actions-for-continuous-integration.md) | GitHub Actions for continuous integration       | Accepted |
+| [0005](0005-gin-http-transport.md)                        | Gin for the HTTP transport                      | Accepted |

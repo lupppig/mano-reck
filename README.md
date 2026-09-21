@@ -78,6 +78,8 @@ Local service endpoints, persistence, and reset behavior are documented in
 
 - Go remains one deployable modular monolith; NATS does not imply
   microservices.
+- Gin is the HTTP transport adapter; domain and application packages do not
+  depend on Gin contexts or types.
 - PostgreSQL is authoritative transactional state.
 - NATS JetStream carries committed asynchronous events through an outbox.
 - Redis is limited to ephemeral coordination and caching.
