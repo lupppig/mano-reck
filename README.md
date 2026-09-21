@@ -5,10 +5,6 @@ platform. Businesses can borrow, provide financing to their customers, or do
 both. BNPL is one financing product built on the platform rather than the
 platform's entire domain model.
 
-The product and delivery requirements are maintained in the sibling
-`BNPL-skills` repository. This repository contains all application code,
-contracts, migrations, local infrastructure, tests, and CI configuration.
-
 ## Delivery status
 
 The dependency-ordered roadmap starts with Phase 00. Foundation acceptance is
