@@ -41,6 +41,7 @@ test-results/
 # Go build and local test output
 bin/
 .cache/
+artifacts/
 
 # Local infrastructure state
 .local/

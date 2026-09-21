@@ -215,3 +215,23 @@ jobs:
           tags: mano-reck/frontend:ci
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+
+  infrastructure:
+    name: Local infrastructure
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify empty-volume dependency startup
+        run: make infrastructure-test
+
+      - name: Upload infrastructure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: infrastructure-diagnostics
+          path: artifacts/infrastructure-*.log
+          if-no-files-found: warn
+          retention-days: 7

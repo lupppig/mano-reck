@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor bootstrap format format-check lint contracts migrations-check unit integration e2e test build smoke smoke-backend smoke-frontend generate generate-check migrate-up migrate-down migrate-version dev down check ci
+.PHONY: help doctor bootstrap format format-check lint contracts migrations-check unit integration infrastructure-test e2e test build smoke smoke-backend smoke-frontend generate generate-check migrate-up migrate-down migrate-version infra-up infra-down infra-reset dev down check ci
 
 help: ## Show the stable repository command surface.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -40,6 +40,10 @@ unit: ## Run deterministic unit tests.
 
 integration: ## Run integration tests against isolated dependencies.
 	@cd backend && go test -tags=integration ./...
+	@./scripts/test-infrastructure.sh
+
+infrastructure-test: ## Start an isolated empty-volume stack and verify every dependency.
+	@./scripts/test-infrastructure.sh
 
 e2e: ## Run critical browser journeys against built applications.
 	@pnpm --dir frontend test:e2e
@@ -74,6 +78,15 @@ migrate-down: ## Revert one local database migration.
 
 migrate-version: ## Print the current local database migration version.
 	@docker compose --env-file .env -f deploy/compose.yaml run --rm migrate version
+
+infra-up: ## Start the local infrastructure and wait for dependency readiness.
+	@docker compose -f deploy/compose.yaml up --detach --wait postgres nats redis seaweedfs kratos
+
+infra-down: ## Stop local infrastructure while preserving named volumes.
+	@docker compose -f deploy/compose.yaml down --remove-orphans
+
+infra-reset: ## Stop local infrastructure and permanently remove its named volumes.
+	@docker compose -f deploy/compose.yaml down --volumes --remove-orphans
 
 dev: ## Build and start the complete local stack.
 	@docker compose --env-file .env -f deploy/compose.yaml up --build --wait

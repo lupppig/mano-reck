@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "manoreck-local",
+      "credentials": [
+        {
+          "accessKey": "local-access-key",
+          "secretKey": "local-secret-key"
+        }
+      ],
+      "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+    }
+  ]
+}
