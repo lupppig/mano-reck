@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"mime"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,14 +27,23 @@ func TestHealthEndpointReportsProcessHealth(t *testing.T) {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, response.Code)
 	}
 
-	if contentType := response.Header().Get("Content-Type"); contentType != "application/json" {
+	contentType, _, err := mime.ParseMediaType(response.Header().Get("Content-Type"))
+	if err != nil {
+		t.Fatalf("parse response content type: %v", err)
+	}
+	if contentType != "application/json" {
 		t.Fatalf("expected application/json content type, got %q", contentType)
 	}
-	if requestID := response.Header().Get("X-Request-ID"); !identifier.IsUUIDv7(requestID) {
+	requestID := response.Header().Get("X-Request-ID")
+	if !identifier.IsUUIDv7(requestID) {
 		t.Fatalf("expected a UUIDv7 request ID, got %q", requestID)
 	}
-	if correlationID := response.Header().Get("X-Correlation-ID"); !identifier.IsUUIDv7(correlationID) {
+	correlationID := response.Header().Get("X-Correlation-ID")
+	if !identifier.IsUUIDv7(correlationID) {
 		t.Fatalf("expected a UUIDv7 correlation ID, got %q", correlationID)
+	}
+	if correlationID != requestID {
+		t.Fatalf("expected a missing correlation ID to use request ID %q, got %q", requestID, correlationID)
 	}
 
 	var body struct {
@@ -44,6 +54,24 @@ func TestHealthEndpointReportsProcessHealth(t *testing.T) {
 	}
 	if body.Status != "ok" {
 		t.Fatalf("expected ok health status, got %q", body.Status)
+	}
+}
+
+func TestHealthEndpointRejectsUnsupportedMethods(t *testing.T) {
+	t.Parallel()
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	application := platformhttp.New(":0", logger)
+	request := httptest.NewRequest(http.MethodPost, "/healthz", nil)
+	response := httptest.NewRecorder()
+
+	application.Handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected status %d, got %d", http.StatusMethodNotAllowed, response.Code)
+	}
+	if allow := response.Header().Get("Allow"); allow != http.MethodGet {
+		t.Fatalf("expected Allow header %q, got %q", http.MethodGet, allow)
 	}
 }
 
