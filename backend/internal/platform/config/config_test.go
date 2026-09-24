@@ -45,6 +45,12 @@ func TestLoadUsesSafeLocalDefaults(t *testing.T) {
 	if loaded.Outbox.BatchSize != 100 || loaded.Outbox.MaxAttempts != 8 {
 		t.Fatalf("unexpected default outbox configuration: %#v", loaded.Outbox)
 	}
+	if loaded.Redis.KeyPrefix != "manoreck" || loaded.Redis.URL.Reveal() != "redis://127.0.0.1:6379/0" {
+		t.Fatalf("unexpected Redis defaults: %#v", loaded.Redis)
+	}
+	if loaded.ObjectStorage.Endpoint != "http://127.0.0.1:8333" || loaded.ObjectStorage.Bucket != "manoreck-local" {
+		t.Fatalf("unexpected object-storage defaults: %#v", loaded.ObjectStorage)
+	}
 }
 
 func TestLoadAcceptsExplicitConfiguration(t *testing.T) {
@@ -66,6 +72,12 @@ func TestLoadAcceptsExplicitConfiguration(t *testing.T) {
 		"MANORECK_OUTBOX_MAX_ATTEMPTS":           "6",
 		"MANORECK_OUTBOX_BASE_BACKOFF_SECONDS":   "2",
 		"MANORECK_OUTBOX_MAX_BACKOFF_SECONDS":    "120",
+		"MANORECK_REDIS_URL":                     "rediss://user:secret@redis.example:6380/2",
+		"MANORECK_REDIS_KEY_PREFIX":              "sandbox_test",
+		"MANORECK_OBJECT_STORAGE_ENDPOINT":       "https://objects.example:9443",
+		"MANORECK_OBJECT_STORAGE_BUCKET":         "sandbox-objects",
+		"MANORECK_OBJECT_STORAGE_ACCESS_KEY":     "object-access",
+		"MANORECK_OBJECT_STORAGE_SECRET_KEY":     "object-secret",
 	}
 	loaded, err := config.Load(mapEnvironment(values))
 	if err != nil {
@@ -96,6 +108,12 @@ func TestLoadAcceptsExplicitConfiguration(t *testing.T) {
 	if loaded.Outbox.PollInterval != 100*time.Millisecond || loaded.Outbox.MaxBackoff != 120*time.Second {
 		t.Fatalf("unexpected outbox configuration: %#v", loaded.Outbox)
 	}
+	if loaded.Redis.URL.String() != "<redacted>" || loaded.Redis.KeyPrefix != "sandbox_test" {
+		t.Fatalf("unexpected Redis configuration: %#v", loaded.Redis)
+	}
+	if loaded.ObjectStorage.AccessKey.String() != "<redacted>" || loaded.ObjectStorage.SecretKey.String() != "<redacted>" {
+		t.Fatalf("object-storage credentials were not redacted: %#v", loaded.ObjectStorage)
+	}
 }
 
 func TestLoadRejectsInvalidValuesWithVariableName(t *testing.T) {
@@ -118,6 +136,13 @@ func TestLoadRejectsInvalidValuesWithVariableName(t *testing.T) {
 		{name: "outbox poll", variable: "MANORECK_OUTBOX_POLL_MILLISECONDS", value: "0"},
 		{name: "outbox attempts", variable: "MANORECK_OUTBOX_MAX_ATTEMPTS", value: "101"},
 		{name: "outbox backoff", variable: "MANORECK_OUTBOX_MAX_BACKOFF_SECONDS", value: "0"},
+		{name: "Redis URL", variable: "MANORECK_REDIS_URL", value: "http://redis.example"},
+		{name: "Redis prefix", variable: "MANORECK_REDIS_KEY_PREFIX", value: "Bad Prefix"},
+		{name: "object endpoint", variable: "MANORECK_OBJECT_STORAGE_ENDPOINT", value: "ftp://objects.example"},
+		{name: "object bucket", variable: "MANORECK_OBJECT_STORAGE_BUCKET", value: "UPPERCASE"},
+		{name: "object bucket IP", variable: "MANORECK_OBJECT_STORAGE_BUCKET", value: "127.0.0.1"},
+		{name: "object access key", variable: "MANORECK_OBJECT_STORAGE_ACCESS_KEY", value: ""},
+		{name: "object secret key", variable: "MANORECK_OBJECT_STORAGE_SECRET_KEY", value: ""},
 	}
 
 	for _, test := range tests {

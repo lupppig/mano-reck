@@ -21,12 +21,13 @@ commands are recorded, both applications and production images build and pass
 process-level smoke checks, shared transport contracts are machine-readable,
 and CI enforces the same quality gates. See the
 [Phase 00 handoff](docs/handoffs/phase-00.md) for acceptance evidence. P01-01
-through P01-03 are also complete: pinned local infrastructure starts from empty
-volumes; the Go process has validated lifecycle and health behavior; and
-PostgreSQL has an explicit migration, pooling, readiness, and transaction
-foundation; and committed integration events now flow through a transactional
-outbox into JetStream with leased retries and idempotent consumption. The next
-task is **P01-05 — Infrastructure adapters**.
+through P01-05 are also complete: pinned local infrastructure starts from empty
+volumes; the Go process has validated lifecycle and health behavior; PostgreSQL
+has an explicit migration, pooling, readiness, and transaction foundation;
+committed integration events flow through a transactional outbox into JetStream
+with leased retries and idempotent consumption; and Redis and SeaweedFS sit
+behind readiness-aware, isolated application adapters. The next task is
+**P01-06 — Next.js runtime shell**.
 Accepted decisions are recorded in
 [`docs/adr`](docs/adr/README.md).
 
@@ -59,6 +60,7 @@ toolchains. The stable command surface is:
 | `make integration`                      | Run tests against real infrastructure boundaries |
 | `make infrastructure-test`              | Verify dependencies from isolated empty volumes  |
 | `make event-test`                       | Prove transactional event delivery and deduping  |
+| `make adapters-test`                    | Verify Redis and object-storage adapter behavior |
 | `make e2e`                              | Run critical browser journeys                    |
 | `make build`                            | Build production application artifacts           |
 | `make smoke`                            | Start and probe both built applications          |

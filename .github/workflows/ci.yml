@@ -50,6 +50,9 @@ jobs:
       - name: Run outbox and JetStream integration tests
         run: make event-test
 
+      - name: Run Redis and object-storage integration tests
+        run: make adapters-test
+
       - name: Build backend
         working-directory: backend
         run: go build -trimpath -o ../bin/manoreck-api ./cmd/api

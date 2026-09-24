@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +28,17 @@ const (
 	defaultOutboxMaxAttempts       = 8
 	defaultOutboxBaseBackoff       = 1
 	defaultOutboxMaxBackoff        = 300
+	defaultRedisURL                = "redis://127.0.0.1:6379/0"
+	defaultRedisKeyPrefix          = "manoreck"
+	defaultObjectStorageEndpoint   = "http://127.0.0.1:8333"
+	defaultObjectStorageBucket     = "manoreck-local"
+	defaultObjectStorageAccessKey  = "local-access-key"
+	defaultObjectStorageSecretKey  = "local-secret-key"
+)
+
+var (
+	redisKeyPrefixPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{1,62}$`)
+	bucketNamePattern     = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]*[a-z0-9]$`)
 )
 
 // LookupEnv matches os.LookupEnv and makes configuration loading deterministic
@@ -43,6 +55,8 @@ type Config struct {
 	Database         DatabaseConfig
 	NATS             NATSConfig
 	Outbox           OutboxConfig
+	Redis            RedisConfig
+	ObjectStorage    ObjectStorageConfig
 }
 
 // NATSConfig contains the sensitive JetStream connection endpoint.
@@ -58,6 +72,20 @@ type OutboxConfig struct {
 	MaxAttempts   int
 	BaseBackoff   time.Duration
 	MaxBackoff    time.Duration
+}
+
+// RedisConfig identifies the isolated ephemeral keyspace.
+type RedisConfig struct {
+	URL       Secret
+	KeyPrefix string
+}
+
+// ObjectStorageConfig contains the local S3-compatible adapter settings.
+type ObjectStorageConfig struct {
+	Endpoint  string
+	Bucket    string
+	AccessKey Secret
+	SecretKey Secret
 }
 
 // DatabaseConfig contains the PostgreSQL connection and pool policy.
@@ -217,6 +245,48 @@ func Load(lookup LookupEnv) (Config, error) {
 		return Config{}, err
 	}
 
+	redisURL := valueOrDefault(lookup, "MANORECK_REDIS_URL", defaultRedisURL)
+	if err := validateRedisURL(redisURL); err != nil {
+		return Config{}, fmt.Errorf("MANORECK_REDIS_URL is invalid: %w", err)
+	}
+	redisKeyPrefix := valueOrDefault(lookup, "MANORECK_REDIS_KEY_PREFIX", defaultRedisKeyPrefix)
+	if !redisKeyPrefixPattern.MatchString(redisKeyPrefix) {
+		return Config{}, fmt.Errorf("MANORECK_REDIS_KEY_PREFIX must be 2-63 lowercase letters, digits, underscores, or hyphens")
+	}
+
+	objectStorageEndpoint := valueOrDefault(
+		lookup,
+		"MANORECK_OBJECT_STORAGE_ENDPOINT",
+		defaultObjectStorageEndpoint,
+	)
+	if err := validateObjectStorageEndpoint(objectStorageEndpoint); err != nil {
+		return Config{}, fmt.Errorf("MANORECK_OBJECT_STORAGE_ENDPOINT is invalid: %w", err)
+	}
+	objectStorageBucket := valueOrDefault(
+		lookup,
+		"MANORECK_OBJECT_STORAGE_BUCKET",
+		defaultObjectStorageBucket,
+	)
+	if !validBucketName(objectStorageBucket) {
+		return Config{}, fmt.Errorf("MANORECK_OBJECT_STORAGE_BUCKET must be a valid 3-63 character lowercase S3 bucket name")
+	}
+	objectStorageAccessKey := valueOrDefault(
+		lookup,
+		"MANORECK_OBJECT_STORAGE_ACCESS_KEY",
+		defaultObjectStorageAccessKey,
+	)
+	if objectStorageAccessKey == "" {
+		return Config{}, fmt.Errorf("MANORECK_OBJECT_STORAGE_ACCESS_KEY must not be empty")
+	}
+	objectStorageSecretKey := valueOrDefault(
+		lookup,
+		"MANORECK_OBJECT_STORAGE_SECRET_KEY",
+		defaultObjectStorageSecretKey,
+	)
+	if objectStorageSecretKey == "" {
+		return Config{}, fmt.Errorf("MANORECK_OBJECT_STORAGE_SECRET_KEY must not be empty")
+	}
+
 	return Config{
 		Environment:      environment,
 		LogLevel:         logLevel,
@@ -236,6 +306,16 @@ func Load(lookup LookupEnv) (Config, error) {
 			MaxAttempts:   outboxMaxAttempts,
 			BaseBackoff:   time.Duration(outboxBaseBackoff) * time.Second,
 			MaxBackoff:    time.Duration(outboxMaxBackoff) * time.Second,
+		},
+		Redis: RedisConfig{
+			URL:       Secret{value: redisURL},
+			KeyPrefix: redisKeyPrefix,
+		},
+		ObjectStorage: ObjectStorageConfig{
+			Endpoint:  objectStorageEndpoint,
+			Bucket:    objectStorageBucket,
+			AccessKey: Secret{value: objectStorageAccessKey},
+			SecretKey: Secret{value: objectStorageSecretKey},
 		},
 	}, nil
 }
@@ -318,4 +398,45 @@ func validateNATSURL(natsURL string) error {
 		return fmt.Errorf("host is required")
 	}
 	return nil
+}
+
+func validateRedisURL(redisURL string) error {
+	parsed, err := url.Parse(redisURL)
+	if err != nil {
+		return fmt.Errorf("must be a Redis URL")
+	}
+	if parsed.Scheme != "redis" && parsed.Scheme != "rediss" {
+		return fmt.Errorf("scheme must be redis or rediss")
+	}
+	if parsed.Host == "" {
+		return fmt.Errorf("host is required")
+	}
+	return nil
+}
+
+func validateObjectStorageEndpoint(endpoint string) error {
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return fmt.Errorf("must be an HTTP URL")
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("scheme must be http or https")
+	}
+	if parsed.Host == "" {
+		return fmt.Errorf("host is required")
+	}
+	if parsed.User != nil || (parsed.Path != "" && parsed.Path != "/") || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return fmt.Errorf("credentials, paths, queries, and fragments are not allowed")
+	}
+	return nil
+}
+
+func validBucketName(name string) bool {
+	return len(name) >= 3 &&
+		len(name) <= 63 &&
+		bucketNamePattern.MatchString(name) &&
+		!strings.Contains(name, "..") &&
+		!strings.Contains(name, ".-") &&
+		!strings.Contains(name, "-.") &&
+		net.ParseIP(name) == nil
 }

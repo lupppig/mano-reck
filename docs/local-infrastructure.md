@@ -58,6 +58,11 @@ migration, and proves that committed outbox rows reach a durable JetStream
 consumer. It also verifies rollback exclusion, recovery from an expired relay
 lease, and idempotent handling of duplicate event delivery.
 
+`make adapters-test` creates isolated Redis and SeaweedFS services with a
+unique key prefix and bucket. It proves Redis health and an expiring value
+round trip, then creates the bucket and uploads, reads, checks, and deletes one
+opaque object through the application adapter.
+
 ## Storage and reset
 
 PostgreSQL, JetStream, Redis, and SeaweedFS use Compose-managed named volumes.
@@ -87,6 +92,6 @@ Kratos readiness. It always removes its containers, network, and test volumes.
 On failure, service status and logs are written to the ignored `artifacts/`
 directory.
 
-Kratos self-service UI routes and the initial SeaweedFS bucket are intentionally
-deferred to P01-06 and P01-05 respectively; P01-01 establishes healthy
-dependencies without inventing product behavior.
+Kratos self-service UI routes remain deferred to P01-06. SeaweedFS bucket
+creation belongs to the application adapter; infrastructure startup alone does
+not create application-owned objects or metadata.

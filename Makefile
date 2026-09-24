@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor bootstrap format format-check lint contracts migrations-check unit integration database-test event-test infrastructure-test e2e test build smoke smoke-backend smoke-frontend generate generate-check migrate-up migrate-down migrate-version infra-up infra-down infra-reset dev down check ci
+.PHONY: help doctor bootstrap format format-check lint contracts migrations-check unit integration database-test event-test adapters-test infrastructure-test e2e test build smoke smoke-backend smoke-frontend generate generate-check migrate-up migrate-down migrate-version infra-up infra-down infra-reset dev down check ci
 
 help: ## Show the stable repository command surface.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -41,6 +41,7 @@ unit: ## Run deterministic unit tests.
 integration: ## Run integration tests against isolated dependencies.
 	@./scripts/test-database.sh
 	@./scripts/test-events.sh
+	@./scripts/test-adapters.sh
 	@./scripts/test-infrastructure.sh
 
 database-test: ## Verify migrations, PostgreSQL pooling, and transaction behavior.
@@ -48,6 +49,9 @@ database-test: ## Verify migrations, PostgreSQL pooling, and transaction behavio
 
 event-test: ## Verify transactional outbox and JetStream delivery behavior.
 	@./scripts/test-events.sh
+
+adapters-test: ## Verify isolated Redis and SeaweedFS adapter behavior.
+	@./scripts/test-adapters.sh
 
 infrastructure-test: ## Start an isolated empty-volume stack and verify every dependency.
 	@./scripts/test-infrastructure.sh

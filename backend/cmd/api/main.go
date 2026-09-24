@@ -15,7 +15,9 @@ import (
 	platformhttp "github.com/lupppig/mano-reck/backend/internal/platform/httpserver"
 	"github.com/lupppig/mano-reck/backend/internal/platform/logging"
 	"github.com/lupppig/mano-reck/backend/internal/platform/natsclient"
+	"github.com/lupppig/mano-reck/backend/internal/platform/objectstorage"
 	"github.com/lupppig/mano-reck/backend/internal/platform/outbox"
+	"github.com/lupppig/mano-reck/backend/internal/platform/redisclient"
 )
 
 func main() {
@@ -41,6 +43,24 @@ func main() {
 		logger.Error("configure NATS", "error", err)
 		os.Exit(1)
 	}
+	redisConnection, err := redisclient.New(redisclient.Config{
+		URL:       configuration.Redis.URL.Reveal(),
+		KeyPrefix: configuration.Redis.KeyPrefix,
+	})
+	if err != nil {
+		logger.Error("configure Redis", "error", err)
+		os.Exit(1)
+	}
+	objectStore, err := objectstorage.New(objectstorage.Config{
+		Endpoint:  configuration.ObjectStorage.Endpoint,
+		Bucket:    configuration.ObjectStorage.Bucket,
+		AccessKey: configuration.ObjectStorage.AccessKey.Reveal(),
+		SecretKey: configuration.ObjectStorage.SecretKey.Reveal(),
+	})
+	if err != nil {
+		logger.Error("configure object storage", "error", err)
+		os.Exit(1)
+	}
 	outboxRepository := outbox.NewRepository(databaseConnection)
 	outboxRelay, err := outbox.NewRelay(outboxRepository, natsConnection, outbox.RelayConfig{
 		PollInterval:  configuration.Outbox.PollInterval,
@@ -63,6 +83,8 @@ func main() {
 		configuration.ReadinessTimeout,
 		databaseConnection,
 		natsConnection,
+		redisConnection,
+		objectStore,
 		proofConsumer,
 		outboxRelay,
 	)

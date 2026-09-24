@@ -78,3 +78,25 @@ readiness without failing liveness or triggering a restart loop.
 
 The relay never holds a PostgreSQL transaction open while publishing to NATS.
 JetStream and durable-consumer health contribute to `/readyz` independently.
+
+## Redis
+
+- `MANORECK_REDIS_URL` is treated as sensitive because it may contain
+  credentials. It accepts `redis` and `rediss` URLs.
+- `MANORECK_REDIS_KEY_PREFIX` isolates all keys owned by one runtime or test.
+
+The platform adapter accepts only values with a positive expiry. Redis remains
+ephemeral and is never a source of truth for financial or historical state.
+
+## Object storage
+
+- `MANORECK_OBJECT_STORAGE_ENDPOINT` is the SeaweedFS S3-compatible HTTP or
+  HTTPS endpoint and must not contain credentials or a path.
+- `MANORECK_OBJECT_STORAGE_BUCKET` is the adapter-owned bucket, created during
+  dependency startup when it does not exist.
+- `MANORECK_OBJECT_STORAGE_ACCESS_KEY` and
+  `MANORECK_OBJECT_STORAGE_SECRET_KEY` are sensitive server-only credentials.
+
+The adapter uses opaque UUIDv7 object keys. Business content-type, size,
+authorization, retention, and metadata rules remain with the future module
+that owns each object use case.
