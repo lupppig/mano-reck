@@ -236,11 +236,16 @@ jobs:
       - name: Verify empty-volume dependency startup
         run: make infrastructure-test
 
+      - name: Verify built full-stack event delivery
+        run: make full-stack-test
+
       - name: Upload infrastructure diagnostics
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: infrastructure-diagnostics
-          path: artifacts/infrastructure-*.log
+          path: |
+            artifacts/infrastructure-*.log
+            artifacts/full-stack-*.log
           if-no-files-found: warn
           retention-days: 7

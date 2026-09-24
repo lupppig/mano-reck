@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor bootstrap format format-check lint contracts migrations-check unit integration database-test event-test adapters-test infrastructure-test e2e test build smoke smoke-backend smoke-frontend generate generate-check migrate-up migrate-down migrate-version infra-up infra-down infra-reset dev down check ci
+.PHONY: help doctor bootstrap format format-check lint contracts migrations-check unit integration database-test event-test adapters-test infrastructure-test full-stack-test e2e test build smoke smoke-backend smoke-frontend generate generate-check migrate-up migrate-down migrate-version infra-up infra-down infra-reset dev down check ci
 
 help: ## Show the stable repository command surface.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -43,6 +43,7 @@ integration: ## Run integration tests against isolated dependencies.
 	@./scripts/test-events.sh
 	@./scripts/test-adapters.sh
 	@./scripts/test-infrastructure.sh
+	@./scripts/test-full-stack.sh
 
 database-test: ## Verify migrations, PostgreSQL pooling, and transaction behavior.
 	@./scripts/test-database.sh
@@ -55,6 +56,9 @@ adapters-test: ## Verify isolated Redis and SeaweedFS adapter behavior.
 
 infrastructure-test: ## Start an isolated empty-volume stack and verify every dependency.
 	@./scripts/test-infrastructure.sh
+
+full-stack-test: ## Build the complete stack and prove correlated transaction-to-event delivery.
+	@./scripts/test-full-stack.sh
 
 e2e: ## Run critical browser journeys against built applications.
 	@pnpm --dir frontend test:e2e
@@ -100,10 +104,10 @@ infra-reset: ## Stop local infrastructure and permanently remove its named volum
 	@docker compose -f deploy/compose.yaml down --volumes --remove-orphans
 
 dev: ## Build and start the complete local stack.
-	@docker compose --env-file .env -f deploy/compose.yaml up --build --wait
+	@docker compose -f deploy/compose.yaml up --detach --build --wait
 
 down: ## Stop the local stack without deleting persisted volumes.
-	@docker compose --env-file .env -f deploy/compose.yaml down
+	@docker compose -f deploy/compose.yaml down
 
 check: format-check lint contracts migrations-check unit build ## Run fast local quality checks.
 

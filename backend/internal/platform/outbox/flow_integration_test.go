@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -51,7 +53,8 @@ func TestCommittedOutboxEventPublishesAndConsumesIdempotently(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = natsConnection.Close(context.Background()) })
 
-	consumer, err := eventconsumer.New(databaseConnection, natsConnection)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	consumer, err := eventconsumer.New(databaseConnection, natsConnection, logger)
 	if err != nil {
 		t.Fatalf("construct consumer: %v", err)
 	}
@@ -113,7 +116,7 @@ func TestCommittedOutboxEventPublishesAndConsumesIdempotently(t *testing.T) {
 		MaxAttempts:   5,
 		BaseBackoff:   20 * time.Millisecond,
 		MaxBackoff:    time.Second,
-	})
+	}, logger)
 	if err != nil {
 		t.Fatalf("construct relay: %v", err)
 	}

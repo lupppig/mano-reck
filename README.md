@@ -7,28 +7,31 @@ platform's entire domain model.
 
 ## Delivery status
 
-The dependency-ordered roadmap starts with Phase 00. Foundation acceptance is
-complete, so Phase 01 can now establish the local runtime and infrastructure
-spine.
+The dependency-ordered roadmap starts with Phase 00. Foundation and local
+runtime acceptance are complete, so Phase 02 can now establish authenticated,
+tenant-scoped authorization.
 
-| Phase                                       | Status      | Outcome                                              |
-| ------------------------------------------- | ----------- | ---------------------------------------------------- |
-| 00 — Foundation and production CI           | Complete    | Repository contracts and repeatable quality pipeline |
-| 01 — Local runtime and infrastructure spine | In progress | Healthy local stack and transaction-to-event proof   |
+| Phase                                       | Status   | Outcome                                              |
+| ------------------------------------------- | -------- | ---------------------------------------------------- |
+| 00 — Foundation and production CI           | Complete | Repository contracts and repeatable quality pipeline |
+| 01 — Local runtime and infrastructure spine | Complete | Healthy local stack and transaction-to-event proof   |
 
 P00-01 through P00-06 are complete. Foundational decisions and repository
 commands are recorded, both applications and production images build and pass
 process-level smoke checks, shared transport contracts are machine-readable,
 and CI enforces the same quality gates. See the
 [Phase 00 handoff](docs/handoffs/phase-00.md) for acceptance evidence. P01-01
-through P01-06 are also complete: pinned local infrastructure starts from empty
+through P01-07 are also complete: pinned local infrastructure starts from empty
 volumes; the Go process has validated lifecycle and health behavior; PostgreSQL
 has an explicit migration, pooling, readiness, and transaction foundation;
 committed integration events flow through a transactional outbox into JetStream
 with leased retries and idempotent consumption; Redis and SeaweedFS sit behind
 readiness-aware, isolated application adapters; and the Next.js enterprise
-shell centralizes validated environment and correlated backend access. The next
-task is **P01-07 — Full-stack integration harness**.
+shell centralizes validated environment and correlated backend access. One
+isolated command now builds the complete stack, waits on application and
+dependency health, and proves the correlated transaction-to-event path. See the
+[Phase 01 handoff](docs/handoffs/phase-01.md). The next task is
+**P02-01 — Freeze identity and authorization contracts**.
 Accepted decisions are recorded in
 [`docs/adr`](docs/adr/README.md).
 
@@ -60,6 +63,7 @@ toolchains. The stable command surface is:
 | `make unit`                             | Run deterministic unit tests                     |
 | `make integration`                      | Run tests against real infrastructure boundaries |
 | `make infrastructure-test`              | Verify dependencies from isolated empty volumes  |
+| `make full-stack-test`                  | Prove the built stack and correlated event path  |
 | `make event-test`                       | Prove transactional event delivery and deduping  |
 | `make adapters-test`                    | Verify Redis and object-storage adapter behavior |
 | `make e2e`                              | Run critical browser journeys                    |

@@ -10,6 +10,9 @@ RUN pnpm install --frozen-lockfile --filter @mano-reck/frontend...
 
 FROM dependencies AS build
 
+ARG NEXT_PUBLIC_MANORECK_API_BASE_URL=http://localhost:8080
+ENV NEXT_PUBLIC_MANORECK_API_BASE_URL=${NEXT_PUBLIC_MANORECK_API_BASE_URL}
+
 COPY frontend/ ./frontend/
 RUN pnpm --dir frontend build
 

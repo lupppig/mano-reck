@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -25,7 +27,7 @@ func TestRelayPublishesAndMarksCommittedEvent(t *testing.T) {
 		failureSignal:   make(chan struct{}, 1),
 	}
 	publisher := &fakePublisher{published: make(chan string, 1)}
-	relay, err := outbox.NewRelay(repository, publisher, relayConfiguration())
+	relay, err := outbox.NewRelay(repository, publisher, relayConfiguration(), discardLogger())
 	if err != nil {
 		t.Fatalf("construct relay: %v", err)
 	}
@@ -60,7 +62,7 @@ func TestRelaySchedulesTransientPublishFailure(t *testing.T) {
 		failureSignal:   make(chan struct{}, 1),
 	}
 	publisher := &fakePublisher{err: errors.New("NATS unavailable"), published: make(chan string, 1)}
-	relay, err := outbox.NewRelay(repository, publisher, relayConfiguration())
+	relay, err := outbox.NewRelay(repository, publisher, relayConfiguration(), discardLogger())
 	if err != nil {
 		t.Fatalf("construct relay: %v", err)
 	}
@@ -91,6 +93,10 @@ func relayConfiguration() outbox.RelayConfig {
 		BaseBackoff:   time.Second,
 		MaxBackoff:    time.Minute,
 	}
+}
+
+func discardLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 func relayEnvelope() event.Envelope {

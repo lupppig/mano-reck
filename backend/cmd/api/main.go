@@ -2,16 +2,20 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/lupppig/mano-reck/backend/internal/platform/appruntime"
 	"github.com/lupppig/mano-reck/backend/internal/platform/config"
 	"github.com/lupppig/mano-reck/backend/internal/platform/database"
 	"github.com/lupppig/mano-reck/backend/internal/platform/dependency"
 	"github.com/lupppig/mano-reck/backend/internal/platform/eventconsumer"
+	"github.com/lupppig/mano-reck/backend/internal/platform/healthcheck"
 	platformhttp "github.com/lupppig/mano-reck/backend/internal/platform/httpserver"
 	"github.com/lupppig/mano-reck/backend/internal/platform/logging"
 	"github.com/lupppig/mano-reck/backend/internal/platform/natsclient"
@@ -21,6 +25,14 @@ import (
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "healthcheck" {
+		if err := runHealthcheck(); err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	configuration, err := config.Load(os.LookupEnv)
 	if err != nil {
 		bootstrapLogger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
@@ -69,12 +81,12 @@ func main() {
 		MaxAttempts:   configuration.Outbox.MaxAttempts,
 		BaseBackoff:   configuration.Outbox.BaseBackoff,
 		MaxBackoff:    configuration.Outbox.MaxBackoff,
-	})
+	}, logger)
 	if err != nil {
 		logger.Error("configure outbox relay", "error", err)
 		os.Exit(1)
 	}
-	proofConsumer, err := eventconsumer.New(databaseConnection, natsConnection)
+	proofConsumer, err := eventconsumer.New(databaseConnection, natsConnection, logger)
 	if err != nil {
 		logger.Error("configure infrastructure event consumer", "error", err)
 		os.Exit(1)
@@ -111,4 +123,14 @@ func main() {
 		logger.Error("API process stopped with an error", "error", err)
 		os.Exit(1)
 	}
+}
+
+func runHealthcheck() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	return healthcheck.Check(
+		ctx,
+		&http.Client{Timeout: 2 * time.Second},
+		"http://127.0.0.1:8080/readyz",
+	)
 }

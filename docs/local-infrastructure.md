@@ -1,9 +1,10 @@
 # Local infrastructure
 
 The Phase 01 runtime uses Docker Compose for PostgreSQL, NATS JetStream, Redis,
-SeaweedFS, and ORY Kratos. Images are pinned by exact release and immutable
-multi-platform digest in `deploy/compose.yaml`; upgrades intentionally change
-both values in one reviewed commit.
+SeaweedFS, ORY Kratos, the Go backend, and the Next.js frontend. Infrastructure
+images are pinned by exact release and immutable multi-platform digest in
+`deploy/compose.yaml`; upgrades intentionally change both values in one reviewed
+commit. Application images are built from the repository Dockerfiles.
 
 ## Start and stop
 
@@ -23,6 +24,17 @@ Copy `.env.example` to `.env` when running applications or overriding a host
 port. Compose automatically reads `.env`; container-to-container addresses
 remain stable service names regardless of host-port overrides.
 
+Start the complete stack, including application migrations and built
+applications, with:
+
+```sh
+make dev
+```
+
+Compose applies application and Kratos migrations before starting the backend,
+waits for the backend readiness probe, and then starts the frontend. `make down`
+stops the stack without deleting named volumes.
+
 | Service       | Host endpoint           | Local purpose                       |
 | ------------- | ----------------------- | ----------------------------------- |
 | PostgreSQL    | `127.0.0.1:5432`        | Authoritative application state     |
@@ -32,6 +44,8 @@ remain stable service names regardless of host-port overrides.
 | SeaweedFS S3  | `http://127.0.0.1:8333` | Object bytes                        |
 | Kratos public | `http://127.0.0.1:4433` | Browser and session API             |
 | Kratos admin  | `http://127.0.0.1:4434` | Server-side identity administration |
+| Backend       | `http://127.0.0.1:8080` | Go API and background workers       |
+| Frontend      | `http://127.0.0.1:3000` | Enterprise application shell        |
 
 All ports bind only to loopback. Credentials in the Compose and example files
 are deliberately non-secret local values and must never be reused outside a
@@ -92,6 +106,20 @@ Kratos readiness. It always removes its containers, network, and test volumes.
 On failure, service status and logs are written to the ignored `artifacts/`
 directory.
 
-Kratos self-service UI routes remain deferred to P01-06. SeaweedFS bucket
-creation belongs to the application adapter; infrastructure startup alone does
-not create application-owned objects or metadata.
+The Phase 01 exit gate is one command:
+
+```sh
+make full-stack-test
+```
+
+It builds the backend and frontend images, starts the entire stack with fresh
+isolated volumes and Docker-assigned loopback ports, waits for every health
+check, and probes both applications. It then commits the infrastructure proof
+event to PostgreSQL, waits for the backend relay and durable consumer, asserts
+one idempotent receipt, and verifies that structured HTTP, relay, and consumer
+logs carry the same correlation ID. The harness always tears down its project
+and volumes; failures retain status and service logs under `artifacts/`.
+
+Authentication UI and product identity workflows begin in Phase 02. SeaweedFS
+bucket creation belongs to the application adapter; infrastructure startup
+alone does not create business objects or metadata.

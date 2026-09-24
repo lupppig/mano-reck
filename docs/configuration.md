@@ -114,3 +114,15 @@ Both accept only absolute HTTP or HTTPS origins and have explicit local
 defaults. Backend requests create or propagate a canonical UUIDv7
 `X-Correlation-ID`; response request/correlation identifiers are retained in
 the normalized client error for operational support.
+
+## Compose host ports
+
+`MANORECK_BACKEND_HOST_PORT` and `MANORECK_FRONTEND_HOST_PORT` override the
+loopback ports published by Docker Compose. They default to `8080` and `3000`.
+The existing dependency-specific `_HOST_PORT` values follow the same rule and
+never change container-to-container service addresses.
+
+The frontend image consumes `NEXT_PUBLIC_MANORECK_API_BASE_URL` as a build
+argument because public Next.js values are embedded in browser assets. The
+full-stack harness discovers its Docker-assigned backend port before building
+the frontend, so the isolated artifact contains the exact test origin.

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -40,6 +41,7 @@ type Relay struct {
 	publisher  Publisher
 	config     RelayConfig
 	workerID   string
+	logger     *slog.Logger
 
 	mu        sync.RWMutex
 	cancel    context.CancelFunc
@@ -48,9 +50,14 @@ type Relay struct {
 }
 
 // NewRelay validates worker policy and allocates a stable lease owner ID.
-func NewRelay(repository RelayRepository, publisher Publisher, configuration RelayConfig) (*Relay, error) {
-	if repository == nil || publisher == nil {
-		return nil, fmt.Errorf("outbox relay repository and publisher are required")
+func NewRelay(
+	repository RelayRepository,
+	publisher Publisher,
+	configuration RelayConfig,
+	logger *slog.Logger,
+) (*Relay, error) {
+	if repository == nil || publisher == nil || logger == nil {
+		return nil, fmt.Errorf("outbox relay repository, publisher, and logger are required")
 	}
 	if configuration.PollInterval <= 0 || configuration.LeaseDuration <= 0 {
 		return nil, fmt.Errorf("outbox relay intervals must be positive")
@@ -73,6 +80,7 @@ func NewRelay(repository RelayRepository, publisher Publisher, configuration Rel
 		publisher:  publisher,
 		config:     configuration,
 		workerID:   workerID,
+		logger:     logger,
 	}, nil
 }
 
@@ -92,6 +100,7 @@ func (relay *Relay) Start(parent context.Context) error {
 	relay.cancel = cancel
 	relay.done = make(chan struct{})
 	go relay.run(ctx, relay.done)
+	relay.logger.Info("outbox relay started", "worker_id", relay.workerID)
 	return nil
 }
 
@@ -161,6 +170,15 @@ func (relay *Relay) processBatch(ctx context.Context) error {
 	}
 
 	for _, record := range records {
+		attributes := []any{
+			"event_id", record.Envelope.ID,
+			"event_type", record.Envelope.Type,
+			"aggregate_id", record.Envelope.Aggregate.ID,
+			"correlation_id", record.Envelope.CorrelationID,
+			"attempt", record.Attempt,
+		}
+		relay.logger.InfoContext(ctx, "outbox event publication started", attributes...)
+
 		payload, err := json.Marshal(record.Envelope)
 		if err != nil {
 			if failureErr := relay.repository.MarkFailed(
@@ -174,6 +192,11 @@ func (relay *Relay) processBatch(ctx context.Context) error {
 			); failureErr != nil {
 				return errors.Join(err, failureErr)
 			}
+			relay.logger.ErrorContext(
+				ctx,
+				"outbox event dead-lettered",
+				append(attributes, "error_code", "event_encoding_failed")...,
+			)
 			continue
 		}
 
@@ -190,12 +213,22 @@ func (relay *Relay) processBatch(ctx context.Context) error {
 			); failureErr != nil {
 				return errors.Join(err, failureErr)
 			}
+			relay.logger.WarnContext(
+				ctx,
+				"outbox event retry scheduled",
+				append(
+					attributes,
+					"error_code", "nats_publish_failed",
+					"next_attempt_at", nextAttempt,
+				)...,
+			)
 			continue
 		}
 
 		if err := relay.repository.MarkPublished(ctx, record.Envelope.ID, relay.workerID); err != nil {
 			return err
 		}
+		relay.logger.InfoContext(ctx, "outbox event publication completed", attributes...)
 	}
 	return nil
 }

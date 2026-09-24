@@ -24,11 +24,11 @@ services:
 
   migrate:
     image: migrate/migrate:v4.19.1@sha256:cc4ad8e19d66791e3689405d9a028ce6e9614f32032db14acda1469f7201d6e4
-    profiles: [tools]
     entrypoint:
       - /usr/local/bin/migrate
       - -path=/migrations
       - -database=${MANORECK_DATABASE_URL:-postgres://manoreck:manoreck_local@postgres:5432/manoreck?sslmode=disable}
+    command: ["up"]
     volumes:
       - ../backend/migrations:/migrations:ro
     depends_on:
@@ -144,6 +144,82 @@ services:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:4434/health/ready"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    restart: unless-stopped
+    networks: [platform]
+
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      MANORECK_ENVIRONMENT: ${MANORECK_ENVIRONMENT:-local}
+      MANORECK_LOG_LEVEL: ${MANORECK_LOG_LEVEL:-info}
+      MANORECK_HTTP_ADDRESS: :8080
+      MANORECK_HTTP_SHUTDOWN_TIMEOUT_SECONDS: ${MANORECK_HTTP_SHUTDOWN_TIMEOUT_SECONDS:-10}
+      MANORECK_READINESS_TIMEOUT_SECONDS: ${MANORECK_READINESS_TIMEOUT_SECONDS:-2}
+      MANORECK_DATABASE_URL: ${MANORECK_DATABASE_URL:-postgres://manoreck:manoreck_local@postgres:5432/manoreck?sslmode=disable}
+      MANORECK_DATABASE_MAX_CONNECTIONS: ${MANORECK_DATABASE_MAX_CONNECTIONS:-10}
+      MANORECK_DATABASE_MIN_CONNECTIONS: ${MANORECK_DATABASE_MIN_CONNECTIONS:-1}
+      MANORECK_NATS_URL: ${MANORECK_NATS_URL:-nats://nats:4222}
+      MANORECK_OUTBOX_POLL_MILLISECONDS: ${MANORECK_OUTBOX_POLL_MILLISECONDS:-250}
+      MANORECK_OUTBOX_LEASE_SECONDS: ${MANORECK_OUTBOX_LEASE_SECONDS:-30}
+      MANORECK_OUTBOX_BATCH_SIZE: ${MANORECK_OUTBOX_BATCH_SIZE:-100}
+      MANORECK_OUTBOX_MAX_ATTEMPTS: ${MANORECK_OUTBOX_MAX_ATTEMPTS:-8}
+      MANORECK_OUTBOX_BASE_BACKOFF_SECONDS: ${MANORECK_OUTBOX_BASE_BACKOFF_SECONDS:-1}
+      MANORECK_OUTBOX_MAX_BACKOFF_SECONDS: ${MANORECK_OUTBOX_MAX_BACKOFF_SECONDS:-300}
+      MANORECK_REDIS_URL: ${MANORECK_REDIS_URL:-redis://redis:6379/0}
+      MANORECK_REDIS_KEY_PREFIX: ${MANORECK_REDIS_KEY_PREFIX:-manoreck}
+      MANORECK_OBJECT_STORAGE_ENDPOINT: ${MANORECK_OBJECT_STORAGE_ENDPOINT:-http://seaweedfs:8333}
+      MANORECK_OBJECT_STORAGE_BUCKET: ${MANORECK_OBJECT_STORAGE_BUCKET:-manoreck-local}
+      MANORECK_OBJECT_STORAGE_ACCESS_KEY: ${MANORECK_OBJECT_STORAGE_ACCESS_KEY:-local-access-key}
+      MANORECK_OBJECT_STORAGE_SECRET_KEY: ${MANORECK_OBJECT_STORAGE_SECRET_KEY:-local-secret-key}
+    ports:
+      - "127.0.0.1:${MANORECK_BACKEND_HOST_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      nats:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/manoreck-api", "healthcheck"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    restart: unless-stopped
+    networks: [platform]
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_MANORECK_API_BASE_URL: ${NEXT_PUBLIC_MANORECK_API_BASE_URL:-http://localhost:8080}
+    environment:
+      MANORECK_BACKEND_INTERNAL_URL: http://backend:8080
+    ports:
+      - "127.0.0.1:${MANORECK_FRONTEND_HOST_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)throw new Error(String(r.status))}).catch(()=>process.exit(1))",
+        ]
       interval: 3s
       timeout: 5s
       retries: 30

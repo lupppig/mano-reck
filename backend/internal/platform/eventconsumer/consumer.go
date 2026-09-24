@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -32,6 +33,7 @@ const (
 type Consumer struct {
 	database *database.Database
 	nats     *natsclient.Client
+	logger   *slog.Logger
 
 	mu           sync.RWMutex
 	cancel       context.CancelFunc
@@ -41,11 +43,15 @@ type Consumer struct {
 }
 
 // New constructs the infrastructure proof consumer.
-func New(databaseConnection *database.Database, natsConnection *natsclient.Client) (*Consumer, error) {
-	if databaseConnection == nil || natsConnection == nil {
-		return nil, fmt.Errorf("event consumer database and NATS clients are required")
+func New(
+	databaseConnection *database.Database,
+	natsConnection *natsclient.Client,
+	logger *slog.Logger,
+) (*Consumer, error) {
+	if databaseConnection == nil || natsConnection == nil || logger == nil {
+		return nil, fmt.Errorf("event consumer database, NATS client, and logger are required")
 	}
-	return &Consumer{database: databaseConnection, nats: natsConnection}, nil
+	return &Consumer{database: databaseConnection, nats: natsConnection, logger: logger}, nil
 }
 
 // Name identifies the worker in readiness output.
@@ -80,6 +86,7 @@ func (consumer *Consumer) Start(parent context.Context) error {
 	consumer.done = make(chan struct{})
 	consumer.subscription = subscription
 	go consumer.run(ctx, consumer.done, subscription)
+	consumer.logger.Info("infrastructure event consumer started", "consumer", InfrastructureConsumer)
 	return nil
 }
 
@@ -158,6 +165,15 @@ func (consumer *Consumer) process(ctx context.Context, message *nats.Msg) {
 		consumer.deadLetter(ctx, message, envelope.ID, deliveryCount, "invalid_event_envelope")
 		return
 	}
+	attributes := []any{
+		"consumer", InfrastructureConsumer,
+		"event_id", envelope.ID,
+		"event_type", envelope.Type,
+		"aggregate_id", envelope.Aggregate.ID,
+		"correlation_id", envelope.CorrelationID,
+		"delivery_count", deliveryCount,
+	}
+	consumer.logger.InfoContext(ctx, "event consumption started", attributes...)
 
 	err := consumer.database.InTransaction(ctx, pgx.TxOptions{}, func(transaction database.DBTX) error {
 		_, err := transaction.Exec(
@@ -176,7 +192,14 @@ func (consumer *Consumer) process(ctx context.Context, message *nats.Msg) {
 	if err == nil {
 		if ackErr := message.Ack(); ackErr != nil {
 			consumer.setError(fmt.Errorf("acknowledge event: %w", ackErr))
+			consumer.logger.WarnContext(
+				ctx,
+				"event acknowledgement failed",
+				append(attributes, "error_code", "event_acknowledgement_failed")...,
+			)
+			return
 		}
+		consumer.logger.InfoContext(ctx, "event consumption completed", attributes...)
 		return
 	}
 
@@ -189,6 +212,11 @@ func (consumer *Consumer) process(ctx context.Context, message *nats.Msg) {
 		return
 	}
 	consumer.setError(err)
+	consumer.logger.WarnContext(
+		ctx,
+		"event consumption retry scheduled",
+		append(attributes, "error_code", "consumer_processing_failed")...,
+	)
 }
 
 func (consumer *Consumer) deadLetter(
@@ -232,7 +260,17 @@ func (consumer *Consumer) deadLetter(
 	}
 	if err := message.Term(); err != nil {
 		consumer.setError(fmt.Errorf("terminate dead-lettered event: %w", err))
+		return
 	}
+	consumer.logger.ErrorContext(
+		ctx,
+		"event consumption dead-lettered",
+		"consumer", InfrastructureConsumer,
+		"event_id", eventID,
+		"subject", message.Subject,
+		"delivery_count", deliveryCount,
+		"error_code", reasonCode,
+	)
 }
 
 func (consumer *Consumer) setError(err error) {

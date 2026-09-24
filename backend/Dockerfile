@@ -15,4 +15,5 @@ COPY --from=build /out/manoreck-api /manoreck-api
 
 USER 65532:65532
 EXPOSE 8080
+HEALTHCHECK --interval=3s --timeout=5s --start-period=10s --retries=30 CMD ["/manoreck-api", "healthcheck"]
 ENTRYPOINT ["/manoreck-api"]
