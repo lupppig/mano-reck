@@ -21,11 +21,11 @@ commands are recorded, both applications and production images build and pass
 process-level smoke checks, shared transport contracts are machine-readable,
 and CI enforces the same quality gates. See the
 [Phase 00 handoff](docs/handoffs/phase-00.md) for acceptance evidence. P01-01
-and P01-02 are also complete: pinned local infrastructure starts from empty
-volumes, and the Go process now validates configuration, manages dependency
-lifecycles, propagates request identifiers, and exposes distinct liveness and
-readiness probes. The next task is **P01-03 — Database and migration
-foundation**. Accepted decisions are recorded in
+through P01-03 are also complete: pinned local infrastructure starts from empty
+volumes; the Go process has validated lifecycle and health behavior; and
+PostgreSQL has an explicit migration, pooling, readiness, and transaction
+foundation. The next task is **P01-04 — Outbox and JetStream foundation**.
+Accepted decisions are recorded in
 [`docs/adr`](docs/adr/README.md).
 
 ## Intended repository layout

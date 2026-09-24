@@ -50,3 +50,17 @@ environment variable alone is not sufficient isolation.
 Timeout values are whole seconds from 1 through 60. Invalid startup
 configuration names the affected variable and stops the process before it
 accepts work.
+
+## PostgreSQL
+
+- `MANORECK_DATABASE_URL` is the PostgreSQL connection string. It is treated as
+  sensitive because it may contain credentials and is never included in logs
+  or formatted configuration output.
+- `MANORECK_DATABASE_MAX_CONNECTIONS` bounds the process-wide pool from 1 to
+  100 connections.
+- `MANORECK_DATABASE_MIN_CONNECTIONS` keeps a baseline of warm connections and
+  must be between zero and the configured maximum.
+
+The API creates the pool during startup but reports connectivity through
+`/readyz`. A temporary PostgreSQL outage therefore removes the process from
+readiness without failing liveness or triggering a restart loop.

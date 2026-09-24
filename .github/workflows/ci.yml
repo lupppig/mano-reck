@@ -44,6 +44,9 @@ jobs:
         working-directory: backend
         run: go test -race -covermode=atomic -coverprofile=../coverage.backend.out ./...
 
+      - name: Run PostgreSQL integration tests
+        run: make database-test
+
       - name: Build backend
         working-directory: backend
         run: go build -trimpath -o ../bin/manoreck-api ./cmd/api

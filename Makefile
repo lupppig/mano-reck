@@ -1,7 +1,7 @@
 SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
-.PHONY: help doctor bootstrap format format-check lint contracts migrations-check unit integration infrastructure-test e2e test build smoke smoke-backend smoke-frontend generate generate-check migrate-up migrate-down migrate-version infra-up infra-down infra-reset dev down check ci
+.PHONY: help doctor bootstrap format format-check lint contracts migrations-check unit integration database-test infrastructure-test e2e test build smoke smoke-backend smoke-frontend generate generate-check migrate-up migrate-down migrate-version infra-up infra-down infra-reset dev down check ci
 
 help: ## Show the stable repository command surface.
 	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -39,8 +39,11 @@ unit: ## Run deterministic unit tests.
 	@pnpm --dir frontend test
 
 integration: ## Run integration tests against isolated dependencies.
-	@cd backend && go test -tags=integration ./...
+	@./scripts/test-database.sh
 	@./scripts/test-infrastructure.sh
+
+database-test: ## Verify migrations, PostgreSQL pooling, and transaction behavior.
+	@./scripts/test-database.sh
 
 infrastructure-test: ## Start an isolated empty-volume stack and verify every dependency.
 	@./scripts/test-infrastructure.sh
@@ -71,13 +74,13 @@ generate-check: generate ## Fail when committed generated files are stale.
 	@git diff --exit-code -- contracts backend frontend
 
 migrate-up: ## Apply all pending local database migrations.
-	@docker compose --env-file .env -f deploy/compose.yaml run --rm migrate up
+	@docker compose -f deploy/compose.yaml run --rm migrate up
 
 migrate-down: ## Revert one local database migration.
-	@docker compose --env-file .env -f deploy/compose.yaml run --rm migrate down 1
+	@docker compose -f deploy/compose.yaml run --rm migrate down 1
 
 migrate-version: ## Print the current local database migration version.
-	@docker compose --env-file .env -f deploy/compose.yaml run --rm migrate version
+	@docker compose -f deploy/compose.yaml run --rm migrate version
 
 infra-up: ## Start the local infrastructure and wait for dependency readiness.
 	@docker compose -f deploy/compose.yaml up --detach --wait postgres nats redis seaweedfs kratos

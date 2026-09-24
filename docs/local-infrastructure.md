@@ -37,6 +37,22 @@ All ports bind only to loopback. Credentials in the Compose and example files
 are deliberately non-secret local values and must never be reused outside a
 local/test environment.
 
+## Application migrations
+
+Database migrations are explicit and are never applied by API startup. After
+the infrastructure is healthy, use:
+
+```sh
+make migrate-up
+make migrate-version
+make migrate-down
+```
+
+The commands run the pinned `golang-migrate` image against SQL files in
+`backend/migrations`. `make database-test` creates an isolated PostgreSQL
+project, applies all migrations, rolls them back, reapplies them, and verifies
+pool readiness and transaction commit/rollback behavior.
+
 ## Storage and reset
 
 PostgreSQL, JetStream, Redis, and SeaweedFS use Compose-managed named volumes.

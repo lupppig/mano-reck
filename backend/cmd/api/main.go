@@ -9,6 +9,7 @@ import (
 
 	"github.com/lupppig/mano-reck/backend/internal/platform/appruntime"
 	"github.com/lupppig/mano-reck/backend/internal/platform/config"
+	"github.com/lupppig/mano-reck/backend/internal/platform/database"
 	"github.com/lupppig/mano-reck/backend/internal/platform/dependency"
 	platformhttp "github.com/lupppig/mano-reck/backend/internal/platform/httpserver"
 	"github.com/lupppig/mano-reck/backend/internal/platform/logging"
@@ -23,7 +24,16 @@ func main() {
 	}
 
 	logger := logging.New(os.Stdout, configuration.LogLevel, configuration.Environment)
-	dependencies, err := dependency.NewSet(configuration.ReadinessTimeout)
+	databaseConnection, err := database.New(database.Config{
+		ConnectionString: configuration.Database.URL.Reveal(),
+		MaxConnections:   configuration.Database.MaxConnections,
+		MinConnections:   configuration.Database.MinConnections,
+	})
+	if err != nil {
+		logger.Error("configure PostgreSQL", "error", err)
+		os.Exit(1)
+	}
+	dependencies, err := dependency.NewSet(configuration.ReadinessTimeout, databaseConnection)
 	if err != nil {
 		logger.Error("configure runtime dependencies", "error", err)
 		os.Exit(1)

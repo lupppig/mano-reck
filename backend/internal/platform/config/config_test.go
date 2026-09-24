@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -32,6 +33,12 @@ func TestLoadUsesSafeLocalDefaults(t *testing.T) {
 	if loaded.ReadinessTimeout != 2*time.Second {
 		t.Fatalf("expected 2 second readiness timeout, got %s", loaded.ReadinessTimeout)
 	}
+	if loaded.Database.MaxConnections != 10 || loaded.Database.MinConnections != 1 {
+		t.Fatalf("unexpected database defaults: %#v", loaded.Database)
+	}
+	if loaded.Database.URL.Reveal() == "" {
+		t.Fatal("expected default database URL")
+	}
 }
 
 func TestLoadAcceptsExplicitConfiguration(t *testing.T) {
@@ -43,6 +50,9 @@ func TestLoadAcceptsExplicitConfiguration(t *testing.T) {
 		"MANORECK_HTTP_ADDRESS":                  "127.0.0.1:9090",
 		"MANORECK_HTTP_SHUTDOWN_TIMEOUT_SECONDS": "15",
 		"MANORECK_READINESS_TIMEOUT_SECONDS":     "3",
+		"MANORECK_DATABASE_URL":                  "postgres://user:secret@database:5432/testdb?sslmode=disable",
+		"MANORECK_DATABASE_MAX_CONNECTIONS":      "20",
+		"MANORECK_DATABASE_MIN_CONNECTIONS":      "2",
 	}
 	loaded, err := config.Load(mapEnvironment(values))
 	if err != nil {
@@ -57,6 +67,15 @@ func TestLoadAcceptsExplicitConfiguration(t *testing.T) {
 	}
 	if loaded.ShutdownTimeout != 15*time.Second || loaded.ReadinessTimeout != 3*time.Second {
 		t.Fatalf("unexpected timeouts: %#v", loaded)
+	}
+	if loaded.Database.MaxConnections != 20 || loaded.Database.MinConnections != 2 {
+		t.Fatalf("unexpected database configuration: %#v", loaded.Database)
+	}
+	if strings.Contains(loaded.Database.URL.String(), "secret") || loaded.Database.URL.String() != "<redacted>" {
+		t.Fatalf("database URL was not redacted: %s", loaded.Database.URL)
+	}
+	if rendered := fmt.Sprintf("%#v", loaded); strings.Contains(rendered, "secret") {
+		t.Fatalf("formatted configuration exposed the database password: %s", rendered)
 	}
 }
 
@@ -73,6 +92,9 @@ func TestLoadRejectsInvalidValuesWithVariableName(t *testing.T) {
 		{name: "address", variable: "MANORECK_HTTP_ADDRESS", value: "localhost"},
 		{name: "shutdown timeout", variable: "MANORECK_HTTP_SHUTDOWN_TIMEOUT_SECONDS", value: "0"},
 		{name: "readiness timeout", variable: "MANORECK_READINESS_TIMEOUT_SECONDS", value: "many"},
+		{name: "database URL", variable: "MANORECK_DATABASE_URL", value: "mysql://database/test"},
+		{name: "database maximum", variable: "MANORECK_DATABASE_MAX_CONNECTIONS", value: "101"},
+		{name: "database minimum", variable: "MANORECK_DATABASE_MIN_CONNECTIONS", value: "11"},
 	}
 
 	for _, test := range tests {

@@ -22,6 +22,21 @@ services:
     restart: unless-stopped
     networks: [platform]
 
+  migrate:
+    image: migrate/migrate:v4.19.1@sha256:cc4ad8e19d66791e3689405d9a028ce6e9614f32032db14acda1469f7201d6e4
+    profiles: [tools]
+    entrypoint:
+      - /usr/local/bin/migrate
+      - -path=/migrations
+      - -database=${MANORECK_DATABASE_URL:-postgres://manoreck:manoreck_local@postgres:5432/manoreck?sslmode=disable}
+    volumes:
+      - ../backend/migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks: [platform]
+
   nats:
     image: nats:2.15.0-alpine3.22@sha256:ac8f88a6494bffc2c2a5289a0ca61cb28a9145c11ba5677cf24265d07f46d8d4
     command:
