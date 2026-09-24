@@ -21,13 +21,14 @@ commands are recorded, both applications and production images build and pass
 process-level smoke checks, shared transport contracts are machine-readable,
 and CI enforces the same quality gates. See the
 [Phase 00 handoff](docs/handoffs/phase-00.md) for acceptance evidence. P01-01
-through P01-05 are also complete: pinned local infrastructure starts from empty
+through P01-06 are also complete: pinned local infrastructure starts from empty
 volumes; the Go process has validated lifecycle and health behavior; PostgreSQL
 has an explicit migration, pooling, readiness, and transaction foundation;
 committed integration events flow through a transactional outbox into JetStream
-with leased retries and idempotent consumption; and Redis and SeaweedFS sit
-behind readiness-aware, isolated application adapters. The next task is
-**P01-06 — Next.js runtime shell**.
+with leased retries and idempotent consumption; Redis and SeaweedFS sit behind
+readiness-aware, isolated application adapters; and the Next.js enterprise
+shell centralizes validated environment and correlated backend access. The next
+task is **P01-07 — Full-stack integration harness**.
 Accepted decisions are recorded in
 [`docs/adr`](docs/adr/README.md).
 

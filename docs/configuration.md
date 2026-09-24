@@ -100,3 +100,17 @@ ephemeral and is never a source of truth for financial or historical state.
 The adapter uses opaque UUIDv7 object keys. Business content-type, size,
 authorization, retention, and metadata rules remain with the future module
 that owns each object use case.
+
+## Next.js runtime
+
+- `NEXT_PUBLIC_MANORECK_API_BASE_URL` is the browser-visible API origin. It is
+  embedded during the production build and must contain no credentials, path,
+  query, or fragment.
+- `MANORECK_BACKEND_INTERNAL_URL` is the server-only API origin used by the
+  centralized backend client. It is validated when that server boundary is
+  constructed and is never embedded into browser output.
+
+Both accept only absolute HTTP or HTTPS origins and have explicit local
+defaults. Backend requests create or propagate a canonical UUIDv7
+`X-Correlation-ID`; response request/correlation identifiers are retained in
+the normalized client error for operational support.

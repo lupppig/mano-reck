@@ -3,13 +3,16 @@ import { describe, expect, it } from "vitest";
 
 import Home from "./page";
 
-describe("foundation shell", () => {
+describe("enterprise shell home", () => {
   it("explains the platform without claiming unavailable product behavior", () => {
     const markup = renderToStaticMarkup(<Home />);
 
-    expect(markup).toContain("Credit infrastructure, built deliberately.");
     expect(markup).toContain(
-      "The local runtime foundation is being assembled now.",
+      "Operational foundations, ready for product work.",
     );
+    expect(markup).toContain(
+      "Authentication, tenant selection, permissions, and product navigation",
+    );
+    expect(markup).not.toContain("Sign in");
   });
 });
