@@ -2,27 +2,33 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
+	"github.com/lupppig/mano-reck/backend/internal/platform/appruntime"
+	"github.com/lupppig/mano-reck/backend/internal/platform/config"
+	"github.com/lupppig/mano-reck/backend/internal/platform/dependency"
 	platformhttp "github.com/lupppig/mano-reck/backend/internal/platform/httpserver"
+	"github.com/lupppig/mano-reck/backend/internal/platform/logging"
 )
 
-const shutdownTimeout = 10 * time.Second
-
 func main() {
-	address := os.Getenv("MANORECK_HTTP_ADDRESS")
-	if address == "" {
-		address = ":8080"
+	configuration, err := config.Load(os.LookupEnv)
+	if err != nil {
+		bootstrapLogger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+		bootstrapLogger.Error("invalid runtime configuration", "error", err)
+		os.Exit(1)
 	}
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	server := platformhttp.New(address, logger)
+	logger := logging.New(os.Stdout, configuration.LogLevel, configuration.Environment)
+	dependencies, err := dependency.NewSet(configuration.ReadinessTimeout)
+	if err != nil {
+		logger.Error("configure runtime dependencies", "error", err)
+		os.Exit(1)
+	}
+	server := platformhttp.New(configuration.HTTPAddress, logger, dependencies)
 
 	shutdownSignals, stop := signal.NotifyContext(
 		context.Background(),
@@ -31,27 +37,14 @@ func main() {
 	)
 	defer stop()
 
-	serverErrors := make(chan error, 1)
-	go func() {
-		logger.Info("http server starting", "address", address)
-		serverErrors <- server.ListenAndServe()
-	}()
-
-	select {
-	case err := <-serverErrors:
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("http server failed", "error", err)
-			os.Exit(1)
-		}
-	case <-shutdownSignals.Done():
-		logger.Info("shutdown requested")
-	}
-
-	shutdownContext, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
-	if err := server.Shutdown(shutdownContext); err != nil {
-		logger.Error("http server shutdown failed", "error", err)
+	if err := appruntime.Run(
+		shutdownSignals,
+		server,
+		dependencies,
+		configuration.ShutdownTimeout,
+		logger,
+	); err != nil {
+		logger.Error("API process stopped with an error", "error", err)
 		os.Exit(1)
 	}
 }

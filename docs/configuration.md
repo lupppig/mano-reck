@@ -35,3 +35,18 @@ values are `local`, `test`, and `sandbox`. No implicit `production` behavior is
 introduced during the local-platform roadmap. Sandbox controls must later
 verify this value and their persisted environment scope; checking an
 environment variable alone is not sufficient isolation.
+
+## API runtime
+
+- `MANORECK_LOG_LEVEL` accepts the structured logger levels `debug`, `info`,
+  `warn`, or `error`.
+- `MANORECK_HTTP_ADDRESS` is a `host:port` listen address. An empty host binds
+  all container interfaces.
+- `MANORECK_HTTP_SHUTDOWN_TIMEOUT_SECONDS` bounds graceful HTTP and dependency
+  shutdown.
+- `MANORECK_READINESS_TIMEOUT_SECONDS` bounds each aggregate dependency
+  readiness evaluation.
+
+Timeout values are whole seconds from 1 through 60. Invalid startup
+configuration names the affected variable and stops the process before it
+accepts work.

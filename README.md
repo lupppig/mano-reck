@@ -20,10 +20,13 @@ P00-01 through P00-06 are complete. Foundational decisions and repository
 commands are recorded, both applications and production images build and pass
 process-level smoke checks, shared transport contracts are machine-readable,
 and CI enforces the same quality gates. See the
-[Phase 00 handoff](docs/handoffs/phase-00.md) for acceptance evidence. P01-01 is
-also complete: the pinned local infrastructure starts from empty volumes and
-passes dependency health checks. The next task is **P01-02 — Bootstrap the Go
-runtime**. Accepted decisions are recorded in [`docs/adr`](docs/adr/README.md).
+[Phase 00 handoff](docs/handoffs/phase-00.md) for acceptance evidence. P01-01
+and P01-02 are also complete: pinned local infrastructure starts from empty
+volumes, and the Go process now validates configuration, manages dependency
+lifecycles, propagates request identifiers, and exposes distinct liveness and
+readiness probes. The next task is **P01-03 — Database and migration
+foundation**. Accepted decisions are recorded in
+[`docs/adr`](docs/adr/README.md).
 
 ## Intended repository layout
 

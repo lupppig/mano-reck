@@ -30,6 +30,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+  /livez:
+    get:
+      operationId: getProcessLiveness
+      summary: Report whether the backend process is alive
+      tags: [Operations]
+      security: []
+      responses:
+        "200":
+          description: The process is alive. Dependency outages do not fail liveness.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "#/components/headers/CorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /readyz:
+    get:
+      operationId: getProcessReadiness
+      summary: Report whether the backend can accept work
+      tags: [Operations]
+      security: []
+      responses:
+        "200":
+          description: Every required dependency is ready.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "#/components/headers/CorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Readiness"
+        "503":
+          description: At least one required dependency is unavailable.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "#/components/headers/CorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Readiness"
 components:
   headers:
     RequestId:
@@ -107,6 +154,29 @@ components:
         status:
           type: string
           const: ok
+    ReadinessCheck:
+      type: object
+      additionalProperties: false
+      required: [name, status]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum: [ok, unavailable]
+    Readiness:
+      type: object
+      additionalProperties: false
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok, unavailable]
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReadinessCheck"
     Money:
       type: object
       additionalProperties: false
