@@ -24,7 +24,9 @@ and CI enforces the same quality gates. See the
 through P01-03 are also complete: pinned local infrastructure starts from empty
 volumes; the Go process has validated lifecycle and health behavior; and
 PostgreSQL has an explicit migration, pooling, readiness, and transaction
-foundation. The next task is **P01-04 — Outbox and JetStream foundation**.
+foundation; and committed integration events now flow through a transactional
+outbox into JetStream with leased retries and idempotent consumption. The next
+task is **P01-05 — Infrastructure adapters**.
 Accepted decisions are recorded in
 [`docs/adr`](docs/adr/README.md).
 
@@ -56,6 +58,7 @@ toolchains. The stable command surface is:
 | `make unit`                             | Run deterministic unit tests                     |
 | `make integration`                      | Run tests against real infrastructure boundaries |
 | `make infrastructure-test`              | Verify dependencies from isolated empty volumes  |
+| `make event-test`                       | Prove transactional event delivery and deduping  |
 | `make e2e`                              | Run critical browser journeys                    |
 | `make build`                            | Build production application artifacts           |
 | `make smoke`                            | Start and probe both built applications          |

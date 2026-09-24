@@ -64,3 +64,17 @@ accepts work.
 The API creates the pool during startup but reports connectivity through
 `/readyz`. A temporary PostgreSQL outage therefore removes the process from
 readiness without failing liveness or triggering a restart loop.
+
+## NATS and outbox relay
+
+- `MANORECK_NATS_URL` is treated as sensitive because it may embed
+  credentials.
+- `MANORECK_OUTBOX_POLL_MILLISECONDS`, `MANORECK_OUTBOX_LEASE_SECONDS`, and
+  `MANORECK_OUTBOX_BATCH_SIZE` bound relay work and abandoned-lease recovery.
+- `MANORECK_OUTBOX_MAX_ATTEMPTS`,
+  `MANORECK_OUTBOX_BASE_BACKOFF_SECONDS`, and
+  `MANORECK_OUTBOX_MAX_BACKOFF_SECONDS` define bounded exponential retry and
+  terminal dead-letter behavior.
+
+The relay never holds a PostgreSQL transaction open while publishing to NATS.
+JetStream and durable-consumer health contribute to `/readyz` independently.

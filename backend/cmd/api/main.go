@@ -11,8 +11,11 @@ import (
 	"github.com/lupppig/mano-reck/backend/internal/platform/config"
 	"github.com/lupppig/mano-reck/backend/internal/platform/database"
 	"github.com/lupppig/mano-reck/backend/internal/platform/dependency"
+	"github.com/lupppig/mano-reck/backend/internal/platform/eventconsumer"
 	platformhttp "github.com/lupppig/mano-reck/backend/internal/platform/httpserver"
 	"github.com/lupppig/mano-reck/backend/internal/platform/logging"
+	"github.com/lupppig/mano-reck/backend/internal/platform/natsclient"
+	"github.com/lupppig/mano-reck/backend/internal/platform/outbox"
 )
 
 func main() {
@@ -33,7 +36,36 @@ func main() {
 		logger.Error("configure PostgreSQL", "error", err)
 		os.Exit(1)
 	}
-	dependencies, err := dependency.NewSet(configuration.ReadinessTimeout, databaseConnection)
+	natsConnection, err := natsclient.New(configuration.NATS.URL.Reveal())
+	if err != nil {
+		logger.Error("configure NATS", "error", err)
+		os.Exit(1)
+	}
+	outboxRepository := outbox.NewRepository(databaseConnection)
+	outboxRelay, err := outbox.NewRelay(outboxRepository, natsConnection, outbox.RelayConfig{
+		PollInterval:  configuration.Outbox.PollInterval,
+		LeaseDuration: configuration.Outbox.LeaseDuration,
+		BatchSize:     configuration.Outbox.BatchSize,
+		MaxAttempts:   configuration.Outbox.MaxAttempts,
+		BaseBackoff:   configuration.Outbox.BaseBackoff,
+		MaxBackoff:    configuration.Outbox.MaxBackoff,
+	})
+	if err != nil {
+		logger.Error("configure outbox relay", "error", err)
+		os.Exit(1)
+	}
+	proofConsumer, err := eventconsumer.New(databaseConnection, natsConnection)
+	if err != nil {
+		logger.Error("configure infrastructure event consumer", "error", err)
+		os.Exit(1)
+	}
+	dependencies, err := dependency.NewSet(
+		configuration.ReadinessTimeout,
+		databaseConnection,
+		natsConnection,
+		proofConsumer,
+		outboxRelay,
+	)
 	if err != nil {
 		logger.Error("configure runtime dependencies", "error", err)
 		os.Exit(1)

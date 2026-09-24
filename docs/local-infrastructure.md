@@ -53,6 +53,11 @@ The commands run the pinned `golang-migrate` image against SQL files in
 project, applies all migrations, rolls them back, reapplies them, and verifies
 pool readiness and transaction commit/rollback behavior.
 
+`make event-test` creates isolated PostgreSQL and NATS services, applies every
+migration, and proves that committed outbox rows reach a durable JetStream
+consumer. It also verifies rollback exclusion, recovery from an expired relay
+lease, and idempotent handling of duplicate event delivery.
+
 ## Storage and reset
 
 PostgreSQL, JetStream, Redis, and SeaweedFS use Compose-managed named volumes.

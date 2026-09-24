@@ -20,6 +20,13 @@ const (
 	defaultDatabaseURL             = "postgres://manoreck:manoreck_local@127.0.0.1:5432/manoreck?sslmode=disable"
 	defaultDatabaseMaxConnections  = 10
 	defaultDatabaseMinConnections  = 1
+	defaultNATSURL                 = "nats://127.0.0.1:4222"
+	defaultOutboxPollMilliseconds  = 250
+	defaultOutboxLeaseSeconds      = 30
+	defaultOutboxBatchSize         = 100
+	defaultOutboxMaxAttempts       = 8
+	defaultOutboxBaseBackoff       = 1
+	defaultOutboxMaxBackoff        = 300
 )
 
 // LookupEnv matches os.LookupEnv and makes configuration loading deterministic
@@ -34,6 +41,23 @@ type Config struct {
 	ShutdownTimeout  time.Duration
 	ReadinessTimeout time.Duration
 	Database         DatabaseConfig
+	NATS             NATSConfig
+	Outbox           OutboxConfig
+}
+
+// NATSConfig contains the sensitive JetStream connection endpoint.
+type NATSConfig struct {
+	URL Secret
+}
+
+// OutboxConfig bounds asynchronous relay behavior.
+type OutboxConfig struct {
+	PollInterval  time.Duration
+	LeaseDuration time.Duration
+	BatchSize     int
+	MaxAttempts   int
+	BaseBackoff   time.Duration
+	MaxBackoff    time.Duration
 }
 
 // DatabaseConfig contains the PostgreSQL connection and pool policy.
@@ -128,6 +152,71 @@ func Load(lookup LookupEnv) (Config, error) {
 		return Config{}, err
 	}
 
+	natsURL := valueOrDefault(lookup, "MANORECK_NATS_URL", defaultNATSURL)
+	if err := validateNATSURL(natsURL); err != nil {
+		return Config{}, fmt.Errorf("MANORECK_NATS_URL is invalid: %w", err)
+	}
+	outboxPollMilliseconds, err := integer(
+		lookup,
+		"MANORECK_OUTBOX_POLL_MILLISECONDS",
+		defaultOutboxPollMilliseconds,
+		10,
+		60000,
+	)
+	if err != nil {
+		return Config{}, err
+	}
+	outboxLeaseSeconds, err := integer(
+		lookup,
+		"MANORECK_OUTBOX_LEASE_SECONDS",
+		defaultOutboxLeaseSeconds,
+		1,
+		3600,
+	)
+	if err != nil {
+		return Config{}, err
+	}
+	outboxBatchSize, err := integer(
+		lookup,
+		"MANORECK_OUTBOX_BATCH_SIZE",
+		defaultOutboxBatchSize,
+		1,
+		1000,
+	)
+	if err != nil {
+		return Config{}, err
+	}
+	outboxMaxAttempts, err := integer(
+		lookup,
+		"MANORECK_OUTBOX_MAX_ATTEMPTS",
+		defaultOutboxMaxAttempts,
+		1,
+		100,
+	)
+	if err != nil {
+		return Config{}, err
+	}
+	outboxBaseBackoff, err := integer(
+		lookup,
+		"MANORECK_OUTBOX_BASE_BACKOFF_SECONDS",
+		defaultOutboxBaseBackoff,
+		1,
+		3600,
+	)
+	if err != nil {
+		return Config{}, err
+	}
+	outboxMaxBackoff, err := integer(
+		lookup,
+		"MANORECK_OUTBOX_MAX_BACKOFF_SECONDS",
+		defaultOutboxMaxBackoff,
+		outboxBaseBackoff,
+		86400,
+	)
+	if err != nil {
+		return Config{}, err
+	}
+
 	return Config{
 		Environment:      environment,
 		LogLevel:         logLevel,
@@ -138,6 +227,15 @@ func Load(lookup LookupEnv) (Config, error) {
 			URL:            Secret{value: databaseURL},
 			MaxConnections: int32(databaseMaxConnections),
 			MinConnections: int32(databaseMinConnections),
+		},
+		NATS: NATSConfig{URL: Secret{value: natsURL}},
+		Outbox: OutboxConfig{
+			PollInterval:  time.Duration(outboxPollMilliseconds) * time.Millisecond,
+			LeaseDuration: time.Duration(outboxLeaseSeconds) * time.Second,
+			BatchSize:     outboxBatchSize,
+			MaxAttempts:   outboxMaxAttempts,
+			BaseBackoff:   time.Duration(outboxBaseBackoff) * time.Second,
+			MaxBackoff:    time.Duration(outboxMaxBackoff) * time.Second,
 		},
 	}, nil
 }
@@ -204,6 +302,20 @@ func validateDatabaseURL(databaseURL string) error {
 	}
 	if parsed.Host == "" || parsed.Path == "" || parsed.Path == "/" {
 		return fmt.Errorf("host and database name are required")
+	}
+	return nil
+}
+
+func validateNATSURL(natsURL string) error {
+	parsed, err := url.Parse(natsURL)
+	if err != nil {
+		return fmt.Errorf("must be a NATS URL")
+	}
+	if parsed.Scheme != "nats" && parsed.Scheme != "tls" {
+		return fmt.Errorf("scheme must be nats or tls")
+	}
+	if parsed.Host == "" {
+		return fmt.Errorf("host is required")
 	}
 	return nil
 }

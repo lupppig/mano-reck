@@ -39,6 +39,12 @@ func TestLoadUsesSafeLocalDefaults(t *testing.T) {
 	if loaded.Database.URL.Reveal() == "" {
 		t.Fatal("expected default database URL")
 	}
+	if loaded.NATS.URL.Reveal() != "nats://127.0.0.1:4222" {
+		t.Fatalf("unexpected default NATS URL")
+	}
+	if loaded.Outbox.BatchSize != 100 || loaded.Outbox.MaxAttempts != 8 {
+		t.Fatalf("unexpected default outbox configuration: %#v", loaded.Outbox)
+	}
 }
 
 func TestLoadAcceptsExplicitConfiguration(t *testing.T) {
@@ -53,6 +59,13 @@ func TestLoadAcceptsExplicitConfiguration(t *testing.T) {
 		"MANORECK_DATABASE_URL":                  "postgres://user:secret@database:5432/testdb?sslmode=disable",
 		"MANORECK_DATABASE_MAX_CONNECTIONS":      "20",
 		"MANORECK_DATABASE_MIN_CONNECTIONS":      "2",
+		"MANORECK_NATS_URL":                      "tls://user:secret@nats.example:4222",
+		"MANORECK_OUTBOX_POLL_MILLISECONDS":      "100",
+		"MANORECK_OUTBOX_LEASE_SECONDS":          "20",
+		"MANORECK_OUTBOX_BATCH_SIZE":             "25",
+		"MANORECK_OUTBOX_MAX_ATTEMPTS":           "6",
+		"MANORECK_OUTBOX_BASE_BACKOFF_SECONDS":   "2",
+		"MANORECK_OUTBOX_MAX_BACKOFF_SECONDS":    "120",
 	}
 	loaded, err := config.Load(mapEnvironment(values))
 	if err != nil {
@@ -77,6 +90,12 @@ func TestLoadAcceptsExplicitConfiguration(t *testing.T) {
 	if rendered := fmt.Sprintf("%#v", loaded); strings.Contains(rendered, "secret") {
 		t.Fatalf("formatted configuration exposed the database password: %s", rendered)
 	}
+	if loaded.NATS.URL.String() != "<redacted>" {
+		t.Fatalf("NATS URL was not redacted: %s", loaded.NATS.URL)
+	}
+	if loaded.Outbox.PollInterval != 100*time.Millisecond || loaded.Outbox.MaxBackoff != 120*time.Second {
+		t.Fatalf("unexpected outbox configuration: %#v", loaded.Outbox)
+	}
 }
 
 func TestLoadRejectsInvalidValuesWithVariableName(t *testing.T) {
@@ -95,6 +114,10 @@ func TestLoadRejectsInvalidValuesWithVariableName(t *testing.T) {
 		{name: "database URL", variable: "MANORECK_DATABASE_URL", value: "mysql://database/test"},
 		{name: "database maximum", variable: "MANORECK_DATABASE_MAX_CONNECTIONS", value: "101"},
 		{name: "database minimum", variable: "MANORECK_DATABASE_MIN_CONNECTIONS", value: "11"},
+		{name: "NATS URL", variable: "MANORECK_NATS_URL", value: "http://nats.example"},
+		{name: "outbox poll", variable: "MANORECK_OUTBOX_POLL_MILLISECONDS", value: "0"},
+		{name: "outbox attempts", variable: "MANORECK_OUTBOX_MAX_ATTEMPTS", value: "101"},
+		{name: "outbox backoff", variable: "MANORECK_OUTBOX_MAX_BACKOFF_SECONDS", value: "0"},
 	}
 
 	for _, test := range tests {

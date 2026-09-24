@@ -35,5 +35,6 @@ re-apply behavior.
   floating point is prohibited.
 
 The initial migration creates only the `platform` schema reserved for runtime
-infrastructure such as the transactional outbox. Domain tables remain owned by
-their delivery phases.
+infrastructure. The second migration adds the transactional outbox and durable
+consumer receipts within that schema. Domain tables remain owned by their
+delivery phases.

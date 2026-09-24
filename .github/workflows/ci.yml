@@ -47,6 +47,9 @@ jobs:
       - name: Run PostgreSQL integration tests
         run: make database-test
 
+      - name: Run outbox and JetStream integration tests
+        run: make event-test
+
       - name: Build backend
         working-directory: backend
         run: go build -trimpath -o ../bin/manoreck-api ./cmd/api
